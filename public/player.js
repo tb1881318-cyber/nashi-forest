@@ -69,11 +69,14 @@ function renderSkills(){
   summary.textContent='技能规则';rule.textContent=info.effect+' '+info.timing+'；'+info.limit;details.append(summary,rule);
   const form=document.createElement('form');
   const targets=me.state.players.filter(p=>p.alive&&(card.type===1||card.type===2||card.type===4?p.seat!==me.seat:true));
-  const select=document.createElement('select');select.setAttribute('aria-label','技能目标');
+  const select=document.createElement('select');select.required=true;
+  const label=document.createElement('label');label.textContent=card.type===1?'选择要查看的玩家':card.type===2?'邀请哪位玩家':card.type===3?'第一次额外机会交给谁':card.type===4?'将捕食转移给谁':'指定哪位玩家先行动';
+  select.setAttribute('aria-label',label.textContent);
+  select.add(new Option('请选择玩家',''));
   for(const p of targets)select.add(new Option(playerLabel(p),p.seat));
-  form.append(select);
+  label.append(select);form.append(label);
   let second=null;
-  if(card.type===3){second=document.createElement('select');second.setAttribute('aria-label','第二次额外机会使用者');for(const p of targets)second.add(new Option(playerLabel(p),p.seat));form.append(second);}
+  if(card.type===3){second=document.createElement('select');second.required=true;const secondLabel=document.createElement('label');secondLabel.textContent='第二次额外机会交给谁';second.setAttribute('aria-label',secondLabel.textContent);second.add(new Option('请选择玩家',''));for(const p of targets)second.add(new Option(playerLabel(p),p.seat));secondLabel.append(second);form.append(secondLabel);}
   const button=document.createElement('button');button.className='primary top-gap';button.textContent=card.type===2?'邀请建立契约':card.type===3?'分配两次额外机会':card.type===4?'支付3 HP并转移捕食':card.type===5?'指定首位行动玩家':'秘密查看身份';
   if(card.type===4)button.disabled=me.state.pendingHunt?.bSeat!==me.seat||me.state.pendingHunt?.redirected;
   if(card.type===2)button.disabled=me.state.order.length>0;
