@@ -84,7 +84,7 @@ test('人数 3–12，抽起点、绕回第七座与保护重置',()=>{
  action(room,{action:'draw',first:7,operation:crypto.randomUUID()});
  assert.deepEqual(room.order,[1,2,3,4,5,6]);
  assert.ok(!JSON.stringify(publicRoom(room)).includes('identity'));
- room.round=1;
+ room.round=1;room.order=[];
  action(room,{action:'next',operation:crypto.randomUUID()});
  assert.ok(room.players.every(p=>!p.safe));
  assert.equal(room.round,2);
@@ -234,4 +234,48 @@ test('双人同时提交、取消后迟到提交与下一场隔离',async()=>{
  assert.equal(final.events[0].row,1);
  assert.equal(final.events[0].column,0);
  assert.equal(final.pendingHunt,null);
+});
+
+test('摇号后玩家依次选目标，双盲结算后自动轮转，放弃扣费与过期提交保护',async()=>{
+ const db=database();const {data:created}=await call(db,'/rooms',{count:3});
+ const path='/rooms/'+created.room,secrets=[token(),token(),token()];
+ for(let i=0;i<3;i++)await call(db,path+'/join',{id:'顺序'+i,secret:secrets[i]});
+ const cmd=body=>call(db,path+'/action',{...body,operation:crypto.randomUUID()},created.hostToken);
+ const play=(seat,body)=>call(db,path+'/play',{...body,round:1,operation:crypto.randomUUID()},secrets[seat-1]);
+ assert.equal((await play(1,{action:'hunt',target:2})).status,409);
+ const drawn=(await cmd({action:'draw'})).data;
+ const [a,b,c]=drawn.order;
+ assert.equal(drawn.turn.current,a);
+ assert.equal((await play(b,{action:'hunt',target:c})).status,403);
+ const hunt=await play(a,{action:'hunt',target:b});assert.equal(hunt.status,200);
+ const encounterId=hunt.data.duel.id;
+ assert.equal((await cmd({action:'draw'})).status,409);
+ await call(db,path+'/strategy',{encounterId,choice:0},secrets[a-1]);
+ assert.equal((await call(db,path)).data.turn.current,a);
+ await call(db,path+'/strategy',{encounterId,choice:1},secrets[b-1]);
+ assert.equal((await call(db,path)).data.turn.current,b);
+ assert.equal((await play(a,{action:'pass'})).status,403);
+ assert.equal((await cmd({action:'next'})).status,409);
+ const before=(await call(db,path)).data.players.find(p=>p.seat===b).hp;
+ const op=crypto.randomUUID();
+ const passed=await call(db,path+'/play',{action:'pass',round:1,operation:op},secrets[b-1]);
+ assert.equal(passed.data.hp,before-2);assert.equal(passed.data.state.turn.current,c);
+ await call(db,path+'/play',{action:'pass',round:1,operation:op},secrets[b-1]);
+ assert.equal((await call(db,path+'/me',undefined,secrets[b-1])).data.hp,before-2);
+ await play(c,{action:'pass'});
+ assert.equal((await call(db,path)).data.turn.current,null);
+ assert.equal((await cmd({action:'next'})).status,200);
+ assert.equal((await play(a,{action:'pass'})).status,409);
+});
+
+test('没有合法目标时免费结束，保护区玩家仍有自己的主动行动',async()=>{
+ const db=database();const {data:created}=await call(db,'/rooms',{count:3});
+ const row=await db.prepare('SELECT data FROM rooms WHERE id=?').bind(created.room).first();
+ const room=JSON.parse(row.data);
+ const secrets=[token(),token(),token()];
+ room.players=secrets.map((secret,i)=>({id:'安全'+i,seat:i+1,secret,identity:'J',alive:true,hp:20,coins:15,safe:true}));
+ room.order=[1,2,3];
+ await db.prepare('UPDATE rooms SET data=?,version=version+1 WHERE id=? AND version=?').bind(JSON.stringify(room),created.room,0).run();
+ const result=await call(db,'/rooms/'+created.room+'/play',{action:'pass',round:1,operation:crypto.randomUUID()},secrets[0]);
+ assert.equal(result.status,200);assert.equal(result.data.hp,20);assert.equal(result.data.state.turn.current,2);
 });

@@ -20,8 +20,10 @@ function render(){
  $('status').textContent=state.done?state.result:state.players.length+' / '+state.count+' 人入场 · 对局 '+roomParam;
  $('drawn').textContent=state.drawn??'—';
  $('order').textContent=state.order.length?state.order.map(n=>playerLabel(state.players.find(p=>p.seat===n))).join(' → '):'等待摇号';
+ const active=state.players.find(p=>p.seat===state.turn?.current);
+ if(state.order.length)$('order').textContent+=(active?' · 当前轮到 '+playerLabel(active):' · 本轮行动完成');
  const settlement=state.lastSettlement;
- const kind={auction:'拍卖结算',hunt:'捕食结算',adjust:'生命值调整'};
+ const kind={auction:'拍卖结算',hunt:'捕食结算',adjust:'生命值调整',pass:'放弃捕食'};
  $('settlementTitle').textContent=settlement?'第 '+settlement.round+' 轮 · '+kind[settlement.kind]+'后全员 HP':'场上玩家';
  $('seats').replaceChildren();
  for(let seat=1;seat<=state.count;seat++){
@@ -52,7 +54,7 @@ function render(){
   for(const id of ['a','buyer','first','adjustSeat'])setOptions($(id),alive(),id==='a'?'选择发起者':null);
   updateTargets();
   const locked=state.done||state.players.length!==state.count;
-  $('next').disabled=locked||!!state.pendingHunt;$('huntButton').disabled=locked||!!state.pendingHunt;$('draw').disabled=locked;
+  $('next').disabled=locked||!!state.pendingHunt||!!state.turn?.current;$('huntButton').disabled=locked||!!state.pendingHunt;$('draw').disabled=locked;
   $('result').textContent=state.result;
   $('sales').textContent=state.sales.map((s,i)=>s?(i?'补给':'技能')+' · '+(s.unsold?'流拍':s.id+' 支付 '+s.price+' 金币'):'').filter(Boolean).join('；');
   $('scepter').hidden=state.round!==5||!state.sales[0]?.seat||state.done;

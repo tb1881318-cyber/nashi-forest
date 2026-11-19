@@ -23,7 +23,7 @@ function fixture(name,extra={}){
   location:{href:'https://forest.test/host.html'},
   window:{history:{replaceState:(_,__,url)=>replaced.push(url)},dispatchEvent(){}},
   CustomEvent:function(type,options){this.type=type;this.detail=options.detail;},
-  startPolling(){},
+  startPolling(){},setOptions(){},
   animals:{J:'象',Q:'虎',K:'鼠'},
   strategy:['进攻','反击'],
   score:value=>value>0?'+'+value:String(value),
@@ -67,7 +67,7 @@ test('等待新局返回时拦住重复点击，失败后按钮恢复',async()=>
 test('个人交手按轮次显示双方策略和正确收益视角，包含被捕食记录',()=>{
  const sample={
   id:'我',seat:1,identity:'J',hp:20,coins:10,alive:true,hpHistory:[],
-  state:{count:7,round:3,events:[
+  state:{count:7,round:3,players:[],events:[
    {round:1,at:1,aSeat:1,bSeat:2,a:'我',b:'乙',row:0,column:1,gainA:-4,gainB:4},
    {round:2,at:2,aSeat:3,bSeat:1,a:'丙',b:'我',row:1,column:0,gainA:-2,gainB:2},
    {round:2,at:3,aSeat:3,bSeat:2,a:'丙',b:'乙',row:1,column:0,gainA:-2,gainB:2}

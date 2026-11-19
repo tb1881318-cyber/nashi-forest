@@ -102,9 +102,40 @@ export function submitStrategy(room,secret,encounterId,choice,now=Date.now()) {
  room.pendingHunt=null;
  settle(room,'hunt',now,before);
 }
+export function turnView(room) {
+ const completed=new Set([
+  ...room.events.filter(e=>e.round===room.round).map(e=>e.aSeat),
+  ...(room.passes??[]).filter(e=>e.round===room.round).map(e=>e.seat)
+ ]);
+ const remaining=room.order.filter(seat=>!completed.has(seat)&&room.players.some(p=>p.seat===seat&&p.alive));
+ return {ready:room.order.length>0,current:room.done?null:remaining[0]??null,remaining,completed:[...completed]};
+}
+export function playerAction(room,secret,body,now=Date.now()) {
+ const player=room.players.find(p=>p.secret===secret);
+ if(!player)fail('请使用自己的玩家台操作',401);
+ room.playerOperations??=[];
+ if(room.playerOperations.includes(body.operation))return;
+ if(room.done||!player.alive)fail('当前不能行动',409);
+ if(body.round!==room.round)fail('轮次已更新，请刷新玩家台',409);
+ if(room.pendingHunt)fail('请等待当前捕食结算',409);
+ const turn=turnView(room);
+ if(!turn.ready)fail('等待主持人摇号',409);
+ if(turn.current!==player.seat)fail('未到你的次序',403);
+ if(body.action==='hunt') {
+  action(room,{action:'hunt',a:player.seat,b:body.target,operation:body.operation},now);
+ } else if(body.action==='pass') {
+  const before=new Map(room.players.map(p=>[p.seat,p.hp]));
+  const legal=room.players.some(p=>p.alive&&p.seat!==player.seat&&!p.safe);
+  if(legal)player.hp-=2;
+  room.passes??=[];
+  room.passes.push({round:room.round,seat:player.seat,id:player.id,at:now,cost:legal?2:0});
+  settle(room,'pass',now,before);
+ } else fail('未知玩家操作');
+ room.playerOperations.push(body.operation);room.playerOperations=room.playerOperations.slice(-100);
+}
 export function publicRoom(room) {
  return {count:room.count,players:room.players.map(({secret,identity,...p})=>p),
- pendingHunt:pendingHuntView(room),round:room.round,done:room.done,events:room.events,order:room.order,drawn:room.drawn,
+ turn:turnView(room),passes:room.passes??[],pendingHunt:pendingHuntView(room),round:room.round,done:room.done,events:room.events,order:room.order,drawn:room.drawn,
  lastSettlement:room.lastSettlement??null,sales:room.sales,deadline:room.deadline,left:room.left,config:room.config,result:room.result??''};
 }
 export function action(room,body,now=Date.now()) {
@@ -119,6 +150,7 @@ export function action(room,body,now=Date.now()) {
   else room.deadline=now+(room.left||240000);
  } else if(body.action==='draw'){
   if(room.done||room.players.length!==room.count) fail('请先等待所有玩家入场');
+  if(room.pendingHunt||room.events.some(e=>e.round===room.round)||(room.passes??[]).some(e=>e.round===room.round))fail('本轮已经开始行动，不能重新摇号',409);
   const first=body.first ? integer(body.first,1,room.count) : randomInt(room.count)+1;
   if(body.first){
    if(room.round!==5||!room.sales[0]?.seat||room.scepterUsed) fail('森林权杖当前不可用');
@@ -151,6 +183,7 @@ export function action(room,body,now=Date.now()) {
   if(room.done||room.players.length!==room.count) fail('当前无法捕食');
   if(room.pendingHunt)fail('请先等待当前双方提交策略',409);
   if(body.row!==undefined||body.column!==undefined)fail('策略必须由双方在个人台秘密提交');
+  if(room.order.length&&turnView(room).current!==body.a)fail('未到这名玩家的行动次序',403);
   const a=room.players.find(p=>p.alive&&p.seat===body.a);
   const b=room.players.find(p=>p.alive&&p.seat===body.b);
   if(!a||!b||a===b||b.safe) fail('请选择合法捕食目标');
@@ -160,6 +193,7 @@ export function action(room,body,now=Date.now()) {
  } else if(body.action==='next'){
   if(room.done||room.players.length!==room.count)fail('当前无法结算');
   if(room.pendingHunt)fail('双方策略尚未揭晓，暂时不能结束本轮',409);
+  if(room.order.length&&turnView(room).current!==null)fail('请等待所有玩家完成本轮行动',409);
   room.players.forEach(p=>{p.alive=p.alive&&p.hp>0;p.safe=false;});
   syncHpRound(room,'end');
   const alive=room.players.filter(p=>p.alive);

@@ -35,6 +35,20 @@ function renderEncounters(){
   $('encounters').append(section);
  }
 }
+function renderTurn(){
+ const state=me.state,turn=state.turn;
+ const own=turn?.current===me.seat;
+ const pending=state.pendingHunt;
+ const current=state.players.find(p=>p.seat===turn?.current);
+ $('turnTitle').textContent=state.done?'对局已结束':!me.alive?'你已淘汰':pending?(me.duel?'请在下方锁定策略':'等待当前双方结算'):!turn?.ready?'等待主持人摇号':!current?'本轮行动已完成':own?'轮到你行动':'未到你的次序';
+ $('turnHint').textContent=current?'当前行动：'+playerLabel(current)+(own?'，请选择目标或放弃。':'，请等待。'):turn?.ready?'等待主持人进行轮末结算。':'摇号后按座位顺序依次行动。';
+ const legal=state.players.filter(p=>p.alive&&p.seat!==me.seat&&!p.safe);
+ $('turnForm').hidden=!own||!!pending||!me.alive||state.done;
+ setOptions($('turnTarget'),legal,'选择捕食目标');
+ $('startHunt').disabled=strategySubmitting||!legal.length;
+ $('passTurn').disabled=strategySubmitting;
+ $('passTurn').textContent=legal.length?'放弃捕食（−2 HP）':'无合法目标，免费结束';
+}
 function renderDuel(){
  const duel=me.duel;
  $('duelPanel').hidden=!duel;
@@ -75,6 +89,7 @@ function render(){
   const tr=document.createElement('tr'),td=document.createElement('td');
   td.colSpan=4;td.textContent='旧局从下一次结算起记录';tr.append(td);$('hpHistory').append(tr);
  }
+ renderTurn();
  renderDuel();
  renderEncounters();
  $('board').href=link('board.html',roomId);
@@ -101,6 +116,21 @@ $('join').onsubmit=async e=>{
   window.dispatchEvent(new CustomEvent('nash-room-changed',{detail:roomId}));
   me=await request('/rooms/'+roomId+'/me',undefined,playerSecret);render();$('status').textContent='';
  }catch(error){$('status').textContent=error.message;}finally{registering=false;$('register').disabled=false;}
+};
+async function takeTurn(action){
+ if(strategySubmitting)return;
+ const operation=crypto.randomUUID();
+ strategySubmitting=true;renderTurn();
+ try{
+  me=await request('/rooms/'+roomId+'/play',{action,target:Number($('turnTarget').value),round:me.state.round,operation},playerSecret);
+  lastRendered=null;render();$('turnStatus').textContent='';
+ }catch(error){$('turnStatus').textContent=error.message;}
+ finally{strategySubmitting=false;renderTurn();renderDuel();}
+}
+$('turnForm').onsubmit=event=>{event.preventDefault();takeTurn('hunt');};
+$('passTurn').onclick=()=>{
+ const legal=me.state.players.some(p=>p.alive&&p.seat!==me.seat&&!p.safe);
+ if(!legal||confirm('仍有合法目标，放弃捕食将扣除 2 HP，确认结束本次行动？'))takeTurn('pass');
 };
 $('strategyForm').onsubmit=async event=>{
  event.preventDefault();
