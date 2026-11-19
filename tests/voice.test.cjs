@@ -25,7 +25,7 @@ test('结果语音在双方揭晓后播报收益，不重播旧记录与轮询�
  a.update(null,[old]);a.toggle();assert.equal(calls.length,1);
  const next={encounterId:'new',aSeat:1,bSeat:2,row:0,column:1,gainA:-4,gainB:4};
  a.update(null,[old,next]);
- assert.match(calls[1],/捕食结果，1号玩家选择进攻，2号玩家选择反击/);
- assert.match(calls[1],/1号玩家减少4点生命值，2号玩家增加4点生命值/);
+ assert.match(calls[1],/捕食结果，1号进攻2号反击/);
+ assert.match(calls[1],/1号减少4点生命值，2号增加4点生命值/);
  a.update(null,[old,next]);assert.equal(calls.length,2);
 });

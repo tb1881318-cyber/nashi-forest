@@ -22,7 +22,7 @@ function createForestAnnouncer(win){
   preview(){
    if(!supported)return false;
    const previous=enabled;enabled=true;
-   say('1号玩家选择捕食2号玩家。捕食结果，1号玩家选择进攻，2号玩家选择反击。1号玩家减少4点生命值，2号玩家增加4点生命值。');
+   say('捕食结果，1号进攻2号反击，1号减少4点生命值，2号增加4点生命值。');
    enabled=previous;return true;
   },
   toggle(){
@@ -38,8 +38,8 @@ function createForestAnnouncer(win){
     if(results.has(key))continue;
     results.add(key);
     if(initialized&&enabled){
-     const gain=(seat,value)=>seat+'号玩家'+(value>0?'增加':value<0?'减少':'不变')+(value===0?'':Math.abs(value)+'点生命值');
-     say('捕食结果，'+event.aSeat+'号玩家选择'+(event.row===0?'进攻':'反击')+'，'+event.bSeat+'号玩家选择'+(event.column===0?'进攻':'反击')+'。'+gain(event.aSeat,event.gainA)+'，'+gain(event.bSeat,event.gainB));
+     const gain=(seat,value)=>seat+'号'+(value>0?'增加':value<0?'减少':'不变')+(value===0?'':Math.abs(value)+'点生命值');
+     say('捕食结果，'+event.aSeat+'号'+(event.row===0?'进攻':'反击')+event.bSeat+'号'+(event.column===0?'进攻':'反击')+'，'+gain(event.aSeat,event.gainA)+'，'+gain(event.bSeat,event.gainB));
     }
    }
    initialized=true;
