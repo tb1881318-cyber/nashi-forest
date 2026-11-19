@@ -75,6 +75,7 @@ async function pull(){
  catch(e){$('status').textContent=e.message;return false;}
 }
 $('controlJump').onclick=()=>{$('controls').open=true;};
+$('previewVoice').onclick=()=>{if(!announcer.preview())$('actionStatus').textContent='当前浏览器不支持语音，请用 Chrome 或 Edge 打开试听。';};
 $('enableVoice').onclick=()=>{
  const enabled=announcer.toggle();
  $('enableVoice').textContent=enabled?'关闭语音':'开启语音';

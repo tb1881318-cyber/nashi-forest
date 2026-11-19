@@ -19,6 +19,12 @@ function createForestAnnouncer(win){
  }
  return {
   supported,
+  preview(){
+   if(!supported)return false;
+   const previous=enabled;enabled=true;
+   say('1号玩家选择捕食2号玩家。捕食结果，1号玩家选择进攻，2号玩家选择反击。1号玩家减少4点生命值，2号玩家增加4点生命值。');
+   enabled=previous;return true;
+  },
   toggle(){
    if(!supported)return false;
    enabled=!enabled;
