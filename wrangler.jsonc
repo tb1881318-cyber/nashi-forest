@@ -1,0 +1,1 @@
+{"name":"nash-forest","main":"dist/server/index.js","compatibility_date":"2026-11-01","d1_databases":[{"binding":"DB","database_name":"nash-forest","database_id":"local-nash-forest","migrations_dir":"drizzle"}]}

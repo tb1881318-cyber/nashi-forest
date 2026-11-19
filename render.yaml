@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: nash-forest
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nash-forest-db
+          property: connectionString
+databases:
+  - name: nash-forest-db
+    plan: free
+    region: singapore
+    databaseName: nash_forest
+    ipAllowList: []

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><script src="desk-navigation.js"></script><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="多人五轮的大学博弈论课堂游戏与混合策略纳什均衡计算器"><title>纳什均衡计算器 · 纳什森林</title><link rel="stylesheet" href="style.css"><script defer src="nash.js"></script><script defer src="content.js"></script><script defer src="nav.js"></script><script defer src="calculator.js"></script></head>
+<body id="top"><header class="top"><div class="wrap"><a class="brand" href="index.html"><strong aria-hidden="true">♠</strong> 纳什森林</a><button class="navtoggle" aria-expanded="false" aria-controls="nav">菜单</button><nav class="nav" id="nav" aria-label="主导航"><a href="index.html#identities">身份</a><a href="index.html#round">轮次规则</a><a href="index.html#skills">技能卡</a><a href="index.html#classroom">课堂演示</a><a href="host.html">主持人台</a><a href="calculator.html" aria-current="page">均衡计算器</a></nav></div></header>
+<main>
+<div class="wrap"><header class="page-head"><div class="eyebrow">NASH EQUILIBRIUM</div><h1>纳什均衡计算器</h1><p>选择捕食者 A 和目标 B 的身份，观察最优反应，再用无差异条件推导双方的出招概率。这里求的是给定双方身份后的单场均衡。身份尚未公开时，玩家还要根据掌握的情报判断对手类型。</p><a href="index.html">← 返回游戏规则</a></header>
+<div class="workspace">
+<div class="stack"><section class="panel"><div class="split"><h2>收益矩阵</h2><button id="customToggle" type="button" aria-expanded="false" aria-controls="custom">自定义 2×2</button></div>
+<div class="fieldrow" id="roles"><label>A · 捕食发起者<select id="a"><option>J</option><option>Q</option><option>K</option></select></label><label>B · 被捕食者<select id="b"><option>J</option><option selected>Q</option><option>K</option></select></label></div>
+<p class="notice" id="relation" role="status"></p>
+<form id="custom" hidden><p>填写四格 A 与 B 的收益，可输入负数或小数，范围为 ±1,000,000。自定义矩阵可为非零和博弈。</p><div class="fieldrow" id="customFields"></div><div class="actions"><button type="submit">应用矩阵</button><button type="button" id="restore">恢复身份矩阵</button></div></form>
+<div id="matrix" aria-label="A 与 B 当前收益矩阵"></div><div class="actions"><button id="best" aria-pressed="false">显示最优反应</button><button id="mix" class="primary">计算混合策略纳什均衡</button></div><p id="bestText" class="notice" aria-live="polite" hidden></p></section>
+<section class="panel" id="derivation" hidden><h2>无差异条件</h2><div id="equations"></div></section></div>
+<div class="stack"><section class="panel" aria-live="polite"><h2>均衡概率</h2><div id="probabilities"><p>点击「计算混合策略纳什均衡」得到进攻与反击的概率。</p></div></section>
+<section class="panel"><h2>模拟与对决</h2><button id="random" class="primary">按照均衡概率随机对决</button><p>每次独立抽取双方策略。均衡是随机化概率的分布，单场收益由实际抽到的策略决定。</p>
+<h3>手动策略演示</h3><p>此处选择在同一设备上可见。课堂实战请先用纸条私下提交，再同时揭示并录入。</p>
+<div class="fieldrow"><label>A 的策略<select id="manualA"><option value="0">进攻</option><option value="1">反击</option></select></label><label>B 的策略<select id="manualB"><option value="0">进攻</option><option value="1">反击</option></select></label></div>
+<div class="actions" style="margin-top:10px"><button id="manual">结算本次对决</button></div><div id="outcome" class="notice" aria-live="polite"></div></section></div>
+</div></div></main><footer class="foot"><div class="wrap"><a href="index.html">纳什森林 · 进化之战</a><a href="#top">返回顶部 ↑</a></div></footer></body></html>
