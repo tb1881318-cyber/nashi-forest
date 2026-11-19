@@ -36,3 +36,11 @@ Render 版本使用 Node.js 24 + PostgreSQL，保持原页面与 API、主持人
 迁移后的网址使用全新的数据库，不包含原 chatgpt.site 上已有房间。请在新网址重新开局；浏览器中旧域名的主持人及玩家凭证不会自动迁移。
 
 验证：`npm test` 共 24 项，包括 PostgreSQL（PGlite 引擎）HTTP 集成测试、7 人并发加入、双盲及重复提交、HTTP 服务重启后的记录读取、页面与本地资源链接。尚未完成 Render 线上运行和国内微信网络实测。
+
+## Netlify 免绑卡路线
+
+仓库也提供 Netlify 版本：`netlify.toml` 指定发布 `public/`，`netlify/functions/game.mjs` 处理所有 `/api/*` 请求，使用 Netlify Database 的 PostgreSQL 存储，`netlify/database/migrations/0001_create_rooms.sql` 自动建表。原有 Render 与 Cloudflare 代码保留。
+
+使用 Netlify Free（Credit-based）账户，从 GitHub 导入本仓库；平台按官方流程自动提供数据库并应用迁移。无需填写数据库密钥。Netlify Free 有硬性额度，额度用完会暂停服务；账号是否触发额外验证以实际页面为准。请勿升级付费套餐或开启自动充值。
+
+本地共 25 项测试通过，新增 Netlify 请求适配下的七人并发入场和双盲结算测试。尚未完成 Netlify 线上部署和微信访问验证。

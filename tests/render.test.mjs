@@ -58,3 +58,31 @@ test('Render HTTP 与真实 PostgreSQL 引擎：7 人并发注册、双盲结算
   assert.ok(['J','Q','K'].includes(me.identity));assert.equal(me.hpHistory.length,1);
  } finally {await close();await pg.close();}
 });
+
+test('Netlify 函数适配保持对局和双盲隐私',async()=>{
+ const {netlifyHandler}=await import('../server/netlify.js');
+ const pg=new PGlite();await pg.exec(schema);
+ const pool={async query(sql,values){const r=await pg.query(sql,values);return {rows:r.rows,rowCount:r.affectedRows};}};
+ const handle=netlifyHandler(pool);
+ const call=async(path,body,secret)=>{
+  const res=await handle(new Request('https://test.netlify.app/api'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json',...(secret?{'x-game-session':secret}:{})},body:body?JSON.stringify(body):undefined}));
+  return {status:res.status,data:await res.json()};
+ };
+ try{
+  const room=await call('/rooms',{count:7});assert.equal(room.status,201);
+  const path='/rooms/'+room.data.room;
+  const secrets=Array.from({length:7},()=>token());
+  const joins=await Promise.all(secrets.map((secret,i)=>call(path+'/join',{id:'N'+i,secret})));
+  assert.ok(joins.every(r=>r.status===200));
+  const a=secrets[joins.findIndex(r=>r.data.seat===1)],b=secrets[joins.findIndex(r=>r.data.seat===2)];
+  const start=await call(path+'/action',{action:'hunt',a:1,b:2,operation:crypto.randomUUID()},room.data.hostToken);
+  const encounterId=start.data.pendingHunt.id;
+  await call(path+'/strategy',{encounterId,choice:1},a);
+  const before=(await call(path+'/me',undefined,b)).data;
+  assert.equal(before.duel.choice,null);assert.equal(before.state.pendingHunt.choices,undefined);
+  assert.ok(before.state.players.every(p=>p.hp===20&&!p.identity));
+  await call(path+'/strategy',{encounterId,choice:0},b);
+  const final=(await call(path)).data;assert.equal(final.events.length,1);
+  assert.equal(final.events[0].gainA+final.events[0].gainB,0);
+ }finally{await pg.close();}
+});
