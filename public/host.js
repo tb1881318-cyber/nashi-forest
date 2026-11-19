@@ -55,6 +55,7 @@ $('setup').onsubmit=async e=>{
   window.history.replaceState(null,'',activeUrl.href);
   identitiesVisible=false;$('toggleIdentities').textContent='显示身份';$('toggleIdentities').setAttribute('aria-pressed','false');
   storeValue('nash-host-online',JSON.stringify({room:roomId,token:hostToken}));
+  storeValue('nash-host-'+roomId,JSON.stringify({room:roomId,token:hostToken}));
   window.dispatchEvent(new CustomEvent('nash-room-changed',{detail:roomId}));
   render();$('status').textContent='新局已开启，对局号 '+roomId;
  }catch(e){$('status').textContent=e.message;}

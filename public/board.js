@@ -1,8 +1,11 @@
 let state=null,busy=false,hostToken=null,generation=0,lastRendered=null;
-try {
- const saved=JSON.parse(localStorage.getItem('nash-host-online'));
- if(saved?.room===roomParam)hostToken=saved.token;
-} catch {}
+function restoreHost(){
+ try {
+  const saved=JSON.parse(localStorage.getItem('nash-host-'+roomParam)||localStorage.getItem('nash-host-online'));
+  if(String(saved?.room)===String(roomParam)&&saved?.token)hostToken=saved.token;
+ }catch{}
+}
+restoreHost();
 function route(){return '/rooms/'+roomParam;}
 function alive(){return state.players.filter(p=>p.alive);}
 function updateTargets(){setOptions($('b'),alive().filter(p=>String(p.seat)!==$('a').value&&!p.safe),'选择目标');}
@@ -36,6 +39,13 @@ function render(){
  $('cancelHunt').hidden=!hostToken||!pending;
  renderHuntHistory($('history'),state.events);
  $('controls').hidden=!hostToken;
+ $('controlJump').hidden=!hostToken;
+ $('controlAccess').textContent=hostToken?'已识别主持人：摇号与计时操作在下方。':'当前为只读公共台。请在创建本局的浏览器，从主持人台点击「公共台」进入操作。';
+ if(hostToken){
+  const controls=$('controls');
+  const duo=document.querySelector('.duo');
+  if(duo.nextElementSibling!==controls)duo.after(controls);
+ }
  if(hostToken){
   for(const id of ['a','buyer','first','adjustSeat'])setOptions($(id),alive(),id==='a'?'选择发起者':null);
   updateTargets();
@@ -50,6 +60,7 @@ function render(){
 function tick(){if(state&&!document.hidden){if(hostToken)setText('timer',state.deadline?'暂停谈判':'开始谈判');setText('clock',displayClock(state));setText('phase',state.done?'对局结束':state.deadline?'谈判中':'等待主持人');}}
 async function pull(){
  if(busy)return;
+ const previousHost=hostToken;restoreHost();if(previousHost!==hostToken)lastRendered=null;
  if(!roomParam){$('status').textContent='输入对局号进入公共台';return;}
  try{const current=generation;const updated=await request('/rooms/'+roomParam);if(current!==generation)return;state=updated;render();}
  catch(e){$('status').textContent=e.message;return false;}
