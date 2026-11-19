@@ -1,3 +1,4 @@
+const announcer=createForestAnnouncer(window);
 let state=null,busy=false,hostToken=null,generation=0,lastRendered=null;
 function restoreHost(){
  try {
@@ -34,6 +35,7 @@ function render(){
   const status=document.createElement('small');status.textContent=p?(p.alive?(p.safe?'保护中':p.coins+' 金币'):'淘汰'):'';card.append(name,hp,status);$('seats').append(card);
  }
  const event=state.events.at(-1),pending=state.pendingHunt;
+ announcer.update(pending);
  $('latest').textContent=pending?pending.a+' 捕食 '+pending.b:event?event.a+' 捕食 '+event.b+'　'+score(event.gainA)+' / '+score(event.gainB)+' HP':'等待捕食';
  $('duelProgress').textContent=pending
   ?pending.a+'：'+(pending.submittedA?'已锁定':'选择中')+'　'+pending.b+'：'+(pending.submittedB?'已锁定':'选择中')
@@ -69,6 +71,12 @@ async function pull(){
  try{const current=generation;const updated=await request('/rooms/'+roomParam);if(current!==generation)return;state=updated;render();}
  catch(e){$('status').textContent=e.message;return false;}
 }
+$('enableVoice').onclick=()=>{
+ const enabled=announcer.toggle();
+ $('enableVoice').textContent=enabled?'关闭语音':'开启语音';
+ $('enableVoice').setAttribute('aria-pressed',String(enabled));
+ if(!enabled&&!announcer.supported)$('actionStatus').textContent='当前浏览器不支持语音播报，请使用 Chrome 或 Edge；文字提示正常显示。';
+};
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{$('status').textContent='可按 F11 全屏';}};
 async function command(body){
  if(busy)return;
