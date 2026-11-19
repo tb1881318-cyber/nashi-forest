@@ -1,7 +1,8 @@
 function createForestAnnouncer(win){
  const supported=!!(win.speechSynthesis&&win.SpeechSynthesisUtterance);
  let enabled=false,current=null,last=null;
- const spoken=new Set();
+ const spoken=new Set(),results=new Set();
+ let initialized=false;
  function say(text){
   if(!enabled||!supported)return;
   const utterance=new win.SpeechSynthesisUtterance(text);
@@ -25,7 +26,17 @@ function createForestAnnouncer(win){
    else win.speechSynthesis.cancel();
    return enabled;
   },
-  update(pending){
+  update(pending,events=[]){
+   for(const event of events){
+    const key=event.encounterId??[event.round,event.at,event.aSeat,event.bSeat].join(':');
+    if(results.has(key))continue;
+    results.add(key);
+    if(initialized&&enabled){
+     const gain=(seat,value)=>seat+'号玩家'+(value>0?'增加':value<0?'减少':'不变')+(value===0?'':Math.abs(value)+'点生命值');
+     say('捕食结果，'+event.aSeat+'号玩家选择'+(event.row===0?'进攻':'反击')+'，'+event.bSeat+'号玩家选择'+(event.column===0?'进攻':'反击')+'。'+gain(event.aSeat,event.gainA)+'，'+gain(event.bSeat,event.gainB));
+    }
+   }
+   initialized=true;
    current=pending;
    if(pending?.id!==last){last=pending?.id??null;if(enabled)announce();}
   }

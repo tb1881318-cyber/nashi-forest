@@ -35,23 +35,25 @@ function render(){
   const status=document.createElement('small');status.textContent=p?(p.alive?(p.safe?'保护中':p.coins+' 金币'):'淘汰'):'';card.append(name,hp,status);$('seats').append(card);
  }
  const event=state.events.at(-1),pending=state.pendingHunt;
- announcer.update(pending);
+ announcer.update(pending,state.events);
  $('latest').textContent=pending?pending.a+' 捕食 '+pending.b:event?event.a+' 捕食 '+event.b+'　'+score(event.gainA)+' / '+score(event.gainB)+' HP':'等待捕食';
  $('duelProgress').textContent=pending
   ?pending.a+'：'+(pending.submittedA?'已锁定':'选择中')+'　'+pending.b+'：'+(pending.submittedB?'已锁定':'选择中')
   :event?'双方已揭晓：'+event.a+' '+strategy[event.row]+'，'+event.b+' '+strategy[event.column]:'';
  $('cancelHunt').hidden=!hostToken||!pending;
- renderHuntHistory($('history'),state.events);
+ $('history').replaceChildren();
+ for(let round=1;round<=state.round;round++){
+  const row=document.createElement('li');
+  const entries=state.events.filter(e=>e.round===round).map(e=>e.aSeat+'号 → '+e.bSeat+'号：'+strategy[e.row]+' / '+strategy[e.column]+'，'+score(e.gainA)+' / '+score(e.gainB)+' HP');
+  for(const pass of (state.passes??[]).filter(e=>e.round===round))entries.push(pass.seat+'号放弃（'+(pass.cost?'−'+pass.cost+' HP':'免费')+'）');
+  row.textContent='第 '+round+' 轮　'+(entries.join(' ｜ ')||'等待行动');
+  $('history').append(row);
+ }
  $('controls').hidden=!hostToken;
  $('controlJump').hidden=!hostToken;
  $('drawControls').hidden=!hostToken;
  $('timerControls').hidden=!hostToken;
  $('controlAccess').textContent=hostToken?'主持人模式：摇号和计时按钮位于对应数字下方。':'当前为只读公共台。请在创建本局的浏览器，从主持人台点击「公共台」进入操作。';
- if(hostToken){
-  const controls=$('controls');
-  const duo=document.querySelector('.duo');
-  if(duo.nextElementSibling!==controls)duo.after(controls);
- }
  if(hostToken){
   for(const id of ['a','buyer','first','adjustSeat'])setOptions($(id),alive(),id==='a'?'选择发起者':null);
   updateTargets();
@@ -60,6 +62,7 @@ function render(){
   $('result').textContent=state.result;
   $('sales').textContent=state.sales.map((s,i)=>s?(i?'补给':'技能')+' · '+(s.unsold?'流拍':s.id+' 支付 '+s.price+' 金币'):'').filter(Boolean).join('；');
   $('scepter').hidden=state.round!==5||!state.sales[0]?.seat||state.done;
+  $('utilityPanel').hidden=$('scepter').hidden;
  }
  tick();
 }
@@ -71,6 +74,7 @@ async function pull(){
  try{const current=generation;const updated=await request('/rooms/'+roomParam);if(current!==generation)return;state=updated;render();}
  catch(e){$('status').textContent=e.message;return false;}
 }
+$('controlJump').onclick=()=>{$('controls').open=true;};
 $('enableVoice').onclick=()=>{
  const enabled=announcer.toggle();
  $('enableVoice').textContent=enabled?'关闭语音':'开启语音';
