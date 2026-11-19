@@ -80,7 +80,7 @@ test('人数 3–12，抽起点、绕回第七座与保护重置',()=>{
  const room=createRoom(7);
  room.players=Array.from({length:7},(_,i)=>({id:'P'+i,seat:i+1,identity:room.deck[i],secret:token(),hp:20,coins:15,safe:true,alive:true}));
  room.players[6].alive=false;
- room.round=5;room.sales[0]={seat:1};
+ room.round=5;room.sales=[{seat:1},{unsold:true}];
  action(room,{action:'draw',first:7,operation:crypto.randomUUID()});
  assert.deepEqual(room.order,[1,2,3,4,5,6]);
  assert.ok(!JSON.stringify(publicRoom(room)).includes('identity'));
@@ -243,6 +243,9 @@ test('摇号后玩家依次选目标，双盲结算后自动轮转，放弃扣�
  const cmd=body=>call(db,path+'/action',{...body,operation:crypto.randomUUID()},created.hostToken);
  const play=(seat,body)=>call(db,path+'/play',{...body,round:1,operation:crypto.randomUUID()},secrets[seat-1]);
  assert.equal((await play(1,{action:'hunt',target:2})).status,409);
+ assert.equal((await cmd({action:'draw'})).status,400);
+ await cmd({action:'auction',item:0,unsold:true});
+ await cmd({action:'auction',item:1,unsold:true});
  const drawn=(await cmd({action:'draw'})).data;
  const [a,b,c]=drawn.order;
  assert.equal(drawn.turn.current,a);
@@ -278,4 +281,21 @@ test('没有合法目标时免费结束，保护区玩家仍有自己的主动�
  await db.prepare('UPDATE rooms SET data=?,version=version+1 WHERE id=? AND version=?').bind(JSON.stringify(room),created.room,0).run();
  const result=await call(db,'/rooms/'+created.room+'/play',{action:'pass',round:1,operation:crypto.randomUUID()},secrets[0]);
  assert.equal(result.status,200);assert.equal(result.data.hp,20);assert.equal(result.data.state.turn.current,2);
+});
+
+test('技能 API 将成交卡交给获拍玩家，鹰眼结果不泄露到公共台或其他玩家',async()=>{
+ const db=database();const {data:created}=await call(db,'/rooms',{count:3});
+ const path='/rooms/'+created.room,secrets=[token(),token(),token()];
+ for(let i=0;i<3;i++)await call(db,path+'/join',{id:'技能'+i,secret:secrets[i]});
+ const bought=await call(db,path+'/action',{action:'auction',item:0,seat:1,price:2,capacity:true,operation:crypto.randomUUID()},created.hostToken);
+ assert.equal(bought.status,200);
+ const owner=(await call(db,path+'/me',undefined,secrets[0])).data;
+ assert.equal(owner.skills.cards.length,1);assert.equal(owner.skills.cards[0].name,'鹰眼');
+ const cardId=owner.skills.cards[0].id;
+ assert.equal((await call(db,path+'/skill',{cardId,target:2,operation:crypto.randomUUID()},secrets[1])).status,400);
+ const used=await call(db,path+'/skill',{cardId,target:2,operation:crypto.randomUUID()},secrets[0]);
+ assert.equal(used.status,200);assert.ok(['J','Q','K'].includes(used.data.skills.intel[0].identity));
+ const other=(await call(db,path+'/me',undefined,secrets[1])).data;
+ assert.equal(other.skills.intel.length,0);assert.equal(other.skills.cards.length,0);
+ assert.ok(!JSON.stringify((await call(db,path)).data).includes('identity'));
 });

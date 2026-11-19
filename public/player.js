@@ -47,6 +47,53 @@ function renderEncounters(){
   $('encounters').append(section);
  }
 }
+let skillSnapshot=null;
+async function skillCommand(body){
+ if(strategySubmitting)return;strategySubmitting=true;renderDuel();
+ try{
+  me=await request('/rooms/'+roomId+'/skill',{...body,operation:crypto.randomUUID()},playerSecret);
+  skillSnapshot=null;lastRendered=null;render();$('skillStatus').textContent='操作已完成';
+ }catch(error){$('skillStatus').textContent=error.message;}
+ finally{strategySubmitting=false;renderTurn();renderDuel();}
+}
+function renderSkills(){
+ const snapshot=JSON.stringify([me.skills,me.state.contracts,me.state.pendingHunt,me.state.order,me.state.players]);
+ if(snapshot===skillSnapshot)return;skillSnapshot=snapshot;
+ const box=$('mySkills');box.replaceChildren();
+ const data=me.skills??{cards:[],intel:[],invites:[]};
+ if(!data.cards.length&&!data.intel.length&&!data.invites.length){const p=document.createElement('p');p.textContent='尚未获得技能，等待本轮拍卖。';box.append(p);}
+ for(const card of data.cards){
+  const info=rounds[card.type-1],panel=document.createElement('article'),title=document.createElement('strong');
+  title.textContent=info.icon+' '+info.name;
+  const details=document.createElement('details'),summary=document.createElement('summary'),rule=document.createElement('p');
+  summary.textContent='技能规则';rule.textContent=info.effect+' '+info.timing+'；'+info.limit;details.append(summary,rule);
+  const form=document.createElement('form');
+  const targets=me.state.players.filter(p=>p.alive&&(card.type===1||card.type===2||card.type===4?p.seat!==me.seat:true));
+  const select=document.createElement('select');select.setAttribute('aria-label','技能目标');
+  for(const p of targets)select.add(new Option(playerLabel(p),p.seat));
+  form.append(select);
+  let second=null;
+  if(card.type===3){second=document.createElement('select');second.setAttribute('aria-label','第二次额外机会使用者');for(const p of targets)second.add(new Option(playerLabel(p),p.seat));form.append(second);}
+  const button=document.createElement('button');button.className='primary top-gap';button.textContent=card.type===2?'邀请建立契约':card.type===3?'分配两次额外机会':card.type===4?'支付3 HP并转移捕食':card.type===5?'指定首位行动玩家':'秘密查看身份';
+  if(card.type===4)button.disabled=me.state.pendingHunt?.bSeat!==me.seat||me.state.pendingHunt?.redirected;
+  if(card.type===2)button.disabled=me.state.order.length>0;
+  if(card.type===3)button.disabled=!me.state.order.length;
+  form.append(button);form.onsubmit=e=>{e.preventDefault();skillCommand({cardId:card.id,target:Number(select.value),target2:second?Number(second.value):undefined});};
+  const discard=document.createElement('button');discard.type='button';discard.textContent='放弃此卡';discard.onclick=()=>{if(confirm('确认放弃'+info.name+'？'))skillCommand({cardId:card.id,discard:true});};
+  panel.append(title,details,form,discard);box.append(panel);
+ }
+ for(const intel of data.intel){const p=document.createElement('p');p.textContent='鹰眼情报（仅你可见）：'+intel.seat+'号 '+intel.id+' 的身份为 '+intel.identity+' · '+animals[intel.identity];box.append(p);}
+ for(const contract of (me.state.contracts??[]).filter(c=>c.round===me.state.round&&[c.from,c.to].includes(me.seat)&&c.status!=='invited')){
+  const p=document.createElement('p');
+  p.textContent='生死契约 '+contract.from+'号 / '+contract.to+'号：'+({active:'生效中，双方各托管3 HP',declined:'邀请已拒绝',betrayed:'已背叛，保证金已结算',returned:'守约，保证金已返还'}[contract.status]??contract.status);
+  box.append(p);
+ }
+ for(const invite of data.invites){
+  const p=document.createElement('p');p.textContent=invite.from+'号邀请你建立生死契约，接受后双方各托管3 HP。';
+  for(const accept of [true,false]){const b=document.createElement('button');b.textContent=accept?'同意并缴纳3 HP':'拒绝';b.onclick=()=>skillCommand({contractId:invite.id,accept});p.append(b);}
+  box.append(p);
+ }
+}
 function renderTurn(){
  const state=me.state,turn=state.turn;
  const own=turn?.current===me.seat;
@@ -101,6 +148,7 @@ function render(){
   const tr=document.createElement('tr'),td=document.createElement('td');
   td.colSpan=4;td.textContent='旧局从下一次结算起记录';tr.append(td);$('hpHistory').append(tr);
  }
+ renderSkills();
  renderTurn();
  renderDuel();
  renderEncounters();

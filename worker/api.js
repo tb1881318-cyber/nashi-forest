@@ -1,4 +1,4 @@
-import {createRoom,publicRoom,action,token,randomInt,fail,syncHpRound,personalHpHistory,personalDuel,submitStrategy,playerAction} from './game.js';
+import {createRoom,publicRoom,action,token,randomInt,fail,syncHpRound,personalHpHistory,personalDuel,submitStrategy,playerAction,personalSkills,useSkill} from './game.js';
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 async function readBody(request){
  const text=await request.text();
@@ -18,7 +18,7 @@ async function mutate(db,id,transform){
 }
 function playerView(room,player) {
  return {
-  id:player.id,seat:player.seat,identity:player.identity,hp:player.hp,coins:player.coins,alive:player.alive,
+  skills:personalSkills(room,player.seat),id:player.id,seat:player.seat,identity:player.identity,hp:player.hp,coins:player.coins,alive:player.alive,
   duel:personalDuel(room,player.seat),hpHistory:personalHpHistory(room,player.seat),state:publicRoom(room)
  };
 }
@@ -36,7 +36,7 @@ export async function api(request,env){
    }
    fail('创建失败，请重试',503);
   }
-  const match=url.pathname.match(/^\/api\/rooms\/((?:\d{4}|\d{6}))(?:\/(join|me|host|action|strategy|play))?$/);
+  const match=url.pathname.match(/^\/api\/rooms\/((?:\d{4}|\d{6}))(?:\/(join|me|host|action|strategy|play|skill))?$/);
   if(!match)fail('接口不存在',404);
   const [,id,endpoint]=match;
   const auth=request.headers.get('x-game-session')??'';
@@ -73,6 +73,13 @@ export async function api(request,env){
     room.players.push(p);
     syncHpRound(room);
     return {id:p.id,seat:p.seat};
+   }));
+  }
+  if(endpoint==='skill'){
+   if(!/^[a-f0-9-]{20,60}$/.test(body.operation??''))fail('操作标识无效');
+   return json(await mutate(env.DB,id,room=>{
+    useSkill(room,auth,body);
+    return playerView(room,room.players.find(p=>p.secret===auth));
    }));
   }
   if(endpoint==='play'){

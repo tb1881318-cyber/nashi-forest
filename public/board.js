@@ -12,10 +12,32 @@ function alive(){return state.players.filter(p=>p.alive);}
 function updateTargets(){setOptions($('b'),alive().filter(p=>String(p.seat)!==$('a').value&&!p.safe),'选择目标');}
 function adjustFields(){const p=state.players.find(p=>String(p.seat)===$('adjustSeat').value);if(p){$('hp').value=p.hp;$('coins').value=p.coins;}}
 
+let auctionRound=null;
+function renderAuction(){
+ const info=rounds[state.round-1];
+ $('auctionHeading').textContent='第 '+state.round+' 轮 · '+(state.sales.every(Boolean)?'拍卖已结束':'先完成拍卖');
+ if(auctionRound!==state.round){
+  auctionRound=state.round;
+  const box=$('auctionPreview');box.replaceChildren();
+  const fold=document.createElement('details'),title=document.createElement('summary'),effect=document.createElement('p');
+  title.textContent=info.icon+' '+info.name+' · 点击展开技能规则';
+  effect.textContent=info.effect+' 使用时机：'+info.timing+'。限制：'+info.limit;
+  fold.append(title,effect);
+  const supply=document.createElement('p');supply.textContent='生命补给：+'+info.hp+' HP（成交后自动补给）';
+  box.append(fold,supply);
+  if(hostToken&&!state.sales.every(Boolean))$('controls').open=true;
+ }
+ const sales=state.sales.map((s,i)=>(i?'生命补给':info.name)+'：'+(!s?'待拍卖':s.unsold?'流拍':s.id+' · '+s.price+' 金币')).join(' ｜ ');
+ let line=$('auctionSaleLine');
+ if(!line){line=document.createElement('p');line.id='auctionSaleLine';$('auctionPreview').append(line);}
+ line.textContent=sales;
+ $('item').options[0].textContent=info.name;
+}
 function render(){
  const snapshot=JSON.stringify(state);
  if(snapshot===lastRendered)return;
  lastRendered=snapshot;
+ renderAuction();
  $('boardEntry').hidden=true;$('boardContent').hidden=false;
  $('heading').textContent=state.done?'本局结束':'第 '+state.round+' 轮 · 森林公共台';
  $('status').textContent=state.done?state.result:state.players.length+' / '+state.count+' 人入场 · 对局 '+roomParam;
@@ -24,7 +46,7 @@ function render(){
  const active=state.players.find(p=>p.seat===state.turn?.current);
  if(state.order.length)$('order').textContent+=(active?' · 当前轮到 '+playerLabel(active):' · 本轮行动完成');
  const settlement=state.lastSettlement;
- const kind={auction:'拍卖结算',hunt:'捕食结算',adjust:'生命值调整',pass:'放弃捕食'};
+ const kind={auction:'拍卖结算',hunt:'捕食结算',adjust:'生命值调整',pass:'放弃捕食',skill:'技能结算'};
  $('settlementTitle').textContent=settlement?'第 '+settlement.round+' 轮 · '+kind[settlement.kind]+'后全员 HP':'场上玩家';
  $('seats').replaceChildren();
  for(let seat=1;seat<=state.count;seat++){
@@ -46,6 +68,7 @@ function render(){
   const row=document.createElement('li');
   const entries=state.events.filter(e=>e.round===round).map(e=>e.aSeat+'号 → '+e.bSeat+'号：'+strategy[e.row]+' / '+strategy[e.column]+'，'+score(e.gainA)+' / '+score(e.gainB)+' HP');
   for(const pass of (state.passes??[]).filter(e=>e.round===round))entries.push(pass.seat+'号放弃（'+(pass.cost?'−'+pass.cost+' HP':'免费')+'）');
+  for(const log of (state.skillLog??[]).filter(e=>e.round===round))entries.push(log.text);
   row.textContent='第 '+round+' 轮　'+(entries.join(' ｜ ')||'等待行动');
   $('history').append(row);
  }
@@ -58,11 +81,12 @@ function render(){
   for(const id of ['a','buyer','first','adjustSeat'])setOptions($(id),alive(),id==='a'?'选择发起者':null);
   updateTargets();
   const locked=state.done||state.players.length!==state.count;
-  $('next').disabled=locked||!!state.pendingHunt||!!state.turn?.current;$('huntButton').disabled=locked||!!state.pendingHunt;$('draw').disabled=locked;
+  $('next').disabled=locked||!!state.pendingHunt||!!state.turn?.current||!state.sales.every(Boolean)||!state.order.length;$('huntButton').disabled=locked||!!state.pendingHunt;$('draw').disabled=locked||!state.sales.every(Boolean);
+  $('timer').disabled=!state.sales.every(Boolean);$('resetTimer').disabled=!state.sales.every(Boolean);
   $('result').textContent=state.result;
   $('sales').textContent=state.sales.map((s,i)=>s?(i?'补给':'技能')+' · '+(s.unsold?'流拍':s.id+' 支付 '+s.price+' 金币'):'').filter(Boolean).join('；');
   $('scepter').hidden=state.round!==5||!state.sales[0]?.seat||state.done;
-  $('utilityPanel').hidden=$('scepter').hidden;
+  $('utilityPanel').hidden=true;
  }
  tick();
 }
@@ -108,7 +132,7 @@ $('useScepter').onclick=()=>command({action:'draw',first:Number($('first').value
 $('timer').onclick=()=>command({action:'timer'});
 $('resetTimer').onclick=()=>command({action:'timer',mode:'reset'});
 $('next').onclick=()=>{if(confirm('确认技能费用、保证金与捕食均已结算？'))command({action:'next'});};
-$('auction').onsubmit=e=>{e.preventDefault();command({action:'auction',item:Number($('item').value),seat:Number($('buyer').value),price:Number($('price').value),capacity:$('capacity').checked});};
+$('auction').onsubmit=e=>{e.preventDefault();command({action:'auction',item:Number($('item').value),seat:Number($('buyer').value),price:Number($('price').value),capacity:true});};
 $('unsold').onclick=()=>command({action:'auction',item:Number($('item').value),unsold:true});
 $('adjustSeat').onchange=adjustFields;
 $('adjust').addEventListener('toggle',adjustFields);
