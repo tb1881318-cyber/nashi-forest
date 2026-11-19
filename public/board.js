@@ -40,7 +40,9 @@ function render(){
  renderHuntHistory($('history'),state.events);
  $('controls').hidden=!hostToken;
  $('controlJump').hidden=!hostToken;
- $('controlAccess').textContent=hostToken?'已识别主持人：摇号与计时操作在下方。':'当前为只读公共台。请在创建本局的浏览器，从主持人台点击「公共台」进入操作。';
+ $('drawControls').hidden=!hostToken;
+ $('timerControls').hidden=!hostToken;
+ $('controlAccess').textContent=hostToken?'主持人模式：摇号和计时按钮位于对应数字下方。':'当前为只读公共台。请在创建本局的浏览器，从主持人台点击「公共台」进入操作。';
  if(hostToken){
   const controls=$('controls');
   const duo=document.querySelector('.duo');
