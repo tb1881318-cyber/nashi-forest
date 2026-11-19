@@ -1,6 +1,18 @@
-let roomId=roomParam,playerSecret=null,me=null,revealed=true,lastRendered=null,registering=false,strategySubmitting=false,displayedDuel=null;
+let roomId=roomParam||storedValue('nash-player-last-room'),playerSecret=null,me=null,revealed=true,lastRendered=null,registering=false,strategySubmitting=false,displayedDuel=null;
 $('room').value=roomId??'';
 $('roomField').hidden=!!roomId;
+$('id').value=storedValue('nash-player-last-id')||'';
+let restoring=!!(roomId&&storedValue('nash-player-'+roomId));
+if(restoring){$('join').hidden=true;$('status').textContent='正在恢复你的玩家身份…';}
+function rememberPlayer(){
+ storeValue('nash-player-last-room',roomId);
+ storeValue('nash-player-last-id',me.id);
+ storeValue('nash-player-id-'+roomId,me.id);
+ $('id').value=me.id;
+ const activeUrl=new URL(location.href);activeUrl.searchParams.set('room',roomId);
+ window.history.replaceState(null,'',activeUrl.href);
+ window.dispatchEvent(new CustomEvent('nash-room-changed',{detail:roomId}));
+}
 function storageKey(){return 'nash-player-'+roomId;}
 function credentials(){
  playerSecret=storedValue(storageKey())||secret();
@@ -93,6 +105,7 @@ function render(){
  renderDuel();
  renderEncounters();
  $('board').href=link('board.html',roomId);
+ $('playerCalculator').href=link('calculator.html',roomId);
 }
 async function pull(){
  if(!roomId||!playerSecret||registering||strategySubmitting)return;
@@ -100,9 +113,9 @@ async function pull(){
   const requestedRoom=roomId,requestedSecret=playerSecret;
   const updated=await request('/rooms/'+requestedRoom+'/me',undefined,requestedSecret);
   if(registering||strategySubmitting||requestedRoom!==roomId||requestedSecret!==playerSecret)return;
-  me=updated;render();$('status').textContent='';
+  me=updated;rememberPlayer();render();$('status').textContent='';restoring=false;
  }
- catch(e){if(me)$('status').textContent=e.message;return false;}
+ catch(e){$('status').textContent=e.message;if(restoring){$('join').hidden=false;$('roomField').hidden=false;restoring=false;}return false;}
 }
 $('join').onsubmit=async e=>{
  e.preventDefault();if(registering)return;registering=true;$('register').disabled=true;
@@ -114,7 +127,7 @@ $('join').onsubmit=async e=>{
   activeUrl.searchParams.set('room',roomId);
   window.history.replaceState(null,'',activeUrl.href);
   window.dispatchEvent(new CustomEvent('nash-room-changed',{detail:roomId}));
-  me=await request('/rooms/'+roomId+'/me',undefined,playerSecret);render();$('status').textContent='';
+  me=await request('/rooms/'+roomId+'/me',undefined,playerSecret);rememberPlayer();render();$('status').textContent='';
  }catch(error){$('status').textContent=error.message;}finally{registering=false;$('register').disabled=false;}
 };
 async function takeTurn(action){
@@ -146,6 +159,7 @@ $('strategyForm').onsubmit=async event=>{
  }catch(error){$('strategyStatus').textContent=error.message;}
  finally{strategySubmitting=false;renderDuel();}
 };
+$('switchRoom').onclick=()=>{roomId=null;playerSecret=null;me=null;lastRendered=null;restoring=false;$('hand').hidden=true;$('join').hidden=false;$('roomField').hidden=false;$('room').value='';$('status').textContent='输入新的对局号即可加入，原身份仍保留。';};
 $('reveal').onclick=()=>{revealed=!revealed;render();$('reveal').textContent=revealed?'盖回身份':'查看我的身份';};
 if(roomId)credentials();
 startPolling(pull,2000);

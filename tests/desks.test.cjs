@@ -23,7 +23,7 @@ function fixture(name,extra={}){
   location:{href:'https://forest.test/host.html'},
   window:{history:{replaceState:(_,__,url)=>replaced.push(url)},dispatchEvent(){}},
   CustomEvent:function(type,options){this.type=type;this.detail=options.detail;},
-  startPolling(){},setOptions(){},
+  startPolling(){},setOptions(){},storedValue:()=>null,
   animals:{J:'象',Q:'虎',K:'鼠'},
   strategy:['进攻','反击'],
   score:value=>value>0?'+'+value:String(value),
@@ -87,4 +87,18 @@ test('个人交手按轮次显示双方策略和正确收益视角，包含被�
  const before=$('encounters').children[0];
  vm.runInContext('render()',context);
  assert.equal($('encounters').children[0],before);
+});
+
+test('无对局参数重新打开玩家台会恢复保存的身份，计算器携带对局号',async()=>{
+ const sample={id:'已注册',seat:1,identity:'J',hp:18,coins:15,alive:true,hpHistory:[],duel:null,state:{count:3,round:1,players:[],events:[]}};
+ const secrets=new Map([['nash-player-last-room','2698'],['nash-player-2698','a'.repeat(48)],['nash-player-last-id','已注册']]);
+ let calls=[];
+ const {context,$,saved}=fixture('player',{roomParam:null,storedValue:k=>secrets.get(k)||null,secret:()=>{throw Error('must reuse secret');},request:async(...args)=>{calls.push(args);return sample;}});
+ assert.equal($('join').hidden,true);
+ await vm.runInContext('pull()',context);
+ assert.equal(calls[0][0],'/rooms/2698/me');assert.equal(calls[0][2],'a'.repeat(48));
+ assert.equal($('name').textContent,'已注册');assert.equal($('join').hidden,true);
+ assert.equal($('playerCalculator').href,'calculator.html?room=2698');
+ assert.equal(saved.get('nash-player-last-room'),'2698');
+ $('switchRoom').onclick();assert.equal($('join').hidden,false);assert.equal($('hand').hidden,true);
 });
