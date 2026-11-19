@@ -23,7 +23,7 @@ export function createRoom(count) {
  while(deck.length<count) deck.push(remainder.splice(randomInt(remainder.length),1)[0]);
  for(let i=deck.length-1;i>0;i--){const j=randomInt(i+1);[deck[i],deck[j]]=[deck[j],deck[i]];}
  return {count,hostToken:token(),deck,players:[],hpRounds:[],lastSettlement:null,pendingHunt:null,round:1,done:false,events:[],order:[],drawn:null,
- sales:[null,null],deadline:0,left:120000,processed:[],config:{initial:10,stipend:5},scepterUsed:false};
+ sales:[null,null],deadline:0,left:240000,processed:[],config:{initial:10,stipend:5},scepterUsed:false};
 }
 export function syncHpRound(room, stage='current') {
  const legacy = !room.hpRounds;
@@ -114,9 +114,9 @@ export function action(room,body,now=Date.now()) {
  if(body.action==='settings'){
   room.config={initial:integer(body.initial,0,1000000),stipend:integer(body.stipend,0,1000000)};
  } else if(body.action==='timer'){
-  if(body.mode==='reset'){room.deadline=0;room.left=120000;}
+  if(body.mode==='reset'){room.deadline=0;room.left=240000;}
   else if(room.deadline){room.left=Math.max(0,room.deadline-now);room.deadline=0;}
-  else room.deadline=now+(room.left||120000);
+  else room.deadline=now+(room.left||240000);
  } else if(body.action==='draw'){
   if(room.done||room.players.length!==room.count) fail('请先等待所有玩家入场');
   const first=body.first ? integer(body.first,1,room.count) : randomInt(room.count)+1;
@@ -172,7 +172,7 @@ export function action(room,body,now=Date.now()) {
    room.round++;room.sales=[null,null];room.order=[];room.drawn=null;room.scepterUsed=false;
    alive.forEach(p=>p.coins+=room.config.stipend);
   }
-  room.deadline=0;room.left=120000;
+  room.deadline=0;room.left=240000;
  } else fail('未知操作');
  if(body.action==='auction'&&room.sales.every(Boolean))settle(room,'auction',now,before);
  else if(body.action==='adjust')settle(room,'adjust',now,before);
