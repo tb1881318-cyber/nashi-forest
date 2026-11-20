@@ -86,7 +86,7 @@ test('生死契约仅在拍卖结束后的谈判阶段邀请和接受',()=>{
  assert.throws(()=>skill(room,2,{contractId:invite.id,accept:true}),/谈判阶段/);
  assert.ok(room.players.every(p=>p.hp===20));
 });
-test('随机先手跨轮不重复，同轮重试不重抽，抽尽后明确拒绝',()=>{
+test('随机先手池内不重复，同轮不重抽，存活玩家抽尽后重置',()=>{
  const room=setup(1);const seen=new Set();
  for(let round=1;round<=3;round++){
   room.round=round;room.sales=[{unsold:true},{unsold:true}];room.order=[];room.drawn=null;
@@ -94,7 +94,8 @@ test('随机先手跨轮不重复，同轮重试不重抽，抽尽后明确拒�
   command(room,{action:'draw'});assert.equal(room.drawn,first);
  }
  room.round=4;room.order=[];room.drawn=null;
- assert.throws(()=>command(room,{action:'draw'}),/不能重复摇号/);
+ command(room,{action:'draw'});assert.equal(room.drawCycle,1);const fourth=room.drawn;
+ room.round=5;room.order=[];room.drawn=null;command(room,{action:'draw'});assert.notEqual(room.drawn,fourth);
  assert.equal(createRoom(7).initialHp,30);
 });
 test('普通捕食保护输家，获胜目标不进入保护区',()=>{
@@ -103,4 +104,10 @@ test('普通捕食保护输家，获胜目标不进入保护区',()=>{
  submitStrategy(room,room.players[0].secret,id,0);submitStrategy(room,room.players[1].secret,id,1);
  assert.equal(room.players[0].safe,true);assert.equal(room.players[1].safe,false);
  command(room,{action:'hunt',a:3,b:2});assert.equal(room.pendingHunt.bSeat,2);
+});
+
+test('淘汰者不阻塞抽签池重置，也不会被随机抽中',()=>{
+ const room=setup(1);room.sales=[{unsold:true},{unsold:true}];
+ room.drawHistory=[{round:1,seat:1},{round:2,seat:2}];room.players[2].alive=false;
+ room.round=3;command(room,{action:'draw'});assert.equal(room.drawCycle,1);assert.ok([1,2].includes(room.drawn));
 });

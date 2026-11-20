@@ -258,9 +258,11 @@ export function action(room,body,now=Date.now()) {
   if(body.first)first=integer(body.first,1,room.count);
   else if(room.drawn)first=room.drawn;
   else {
-   const used=new Set(room.drawHistory.filter(e=>!e.designated).map(e=>e.seat));
-   const pool=room.players.filter(p=>p.alive&&!used.has(p.seat));
-   if(!pool.length)fail('所有存活玩家都已被摇中过，本局不能重复摇号');
+   room.drawCycle??=0;
+   const used=new Set(room.drawHistory.filter(e=>!e.designated&&(e.cycle??0)===room.drawCycle).map(e=>e.seat));
+   let pool=room.players.filter(p=>p.alive&&!used.has(p.seat));
+   if(!pool.length){room.drawCycle++;pool=room.players.filter(p=>p.alive);}
+   if(!pool.length)fail('没有可参与摇号的存活玩家');
    first=pool[randomInt(pool.length)].seat;
   }
   if(!room.players.some(p=>p.alive&&p.seat===first))fail('请选择存活玩家');
@@ -268,7 +270,7 @@ export function action(room,body,now=Date.now()) {
    if(room.round!==5||!room.sales[0]?.seat||room.scepterUsed) fail('森林权杖当前不可用');
    room.scepterUsed=true;
   }
-  if(!room.drawHistory.some(e=>e.round===room.round&&e.seat===first))room.drawHistory.push({round:room.round,seat:first,designated:!!body.first});
+  if(!room.drawHistory.some(e=>e.round===room.round&&e.seat===first))room.drawHistory.push({round:room.round,seat:first,cycle:room.drawCycle??0,designated:!!body.first});
   room.drawn=first;
   room.order=room.players.filter(p=>p.alive).map(p=>p.seat).sort((a,b)=>(a-first+room.count)%room.count-(b-first+room.count)%room.count);
  } else if(body.action==='adjust'){
