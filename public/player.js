@@ -128,7 +128,7 @@ function renderTurn(){
  const current=state.players.find(p=>p.seat===turn?.current);
  $('turnTitle').textContent=state.done?'对局已结束':!me.alive?'你已淘汰':pending?(me.duel?'请在下方锁定策略':'等待当前双方结算'):!turn?.ready?'等待主持人摇号':!current?'本轮行动已完成':own?'轮到你行动':'未到你的次序';
  $('turnHint').textContent=current?'当前行动：'+playerLabel(current)+(turn?.extraId?'（狼王额外捕食，可无视保护区）':'')+(own?'，请选择捕食目标，或点击跳过本次捕食。':'，请等待。'):turn?.ready?'等待主持人进行轮末结算。':'摇号后按座位顺序依次行动。';
- const legal=state.players.filter(p=>p.alive&&p.seat!==me.seat&&(!p.safe||!!state.turn?.extraId));
+ const legal=state.players.filter(p=>p.alive&&p.seat!==me.seat&&(!p.safe||!!state.turn?.extraId)&&!(state.turn?.excludedTargets??[]).includes(p.seat));
  $('turnForm').hidden=!own||!!pending||!me.alive||state.done;
  setOptions($('turnTarget'),legal,'选择捕食目标');
  $('startHunt').disabled=strategySubmitting||!legal.length;
@@ -218,7 +218,7 @@ async function takeTurn(action){
 }
 $('turnForm').onsubmit=event=>{event.preventDefault();takeTurn('hunt');};
 $('passTurn').onclick=()=>{
- const legal=me.state.players.some(p=>p.alive&&p.seat!==me.seat&&(!p.safe||!!me.state.turn?.extraId));
+ const legal=me.state.players.some(p=>p.alive&&p.seat!==me.seat&&(!p.safe||!!me.state.turn?.extraId)&&!(me.state.turn?.excludedTargets??[]).includes(p.seat));
  takeTurn(legal?'defer':'pass');
 };
 $('strategyForm').onsubmit=async event=>{

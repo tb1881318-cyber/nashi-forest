@@ -23,7 +23,7 @@ export function createRoom(count) {
  while(deck.length<count) deck.push(remainder.splice(randomInt(remainder.length),1)[0]);
  for(let i=deck.length-1;i>0;i--){const j=randomInt(i+1);[deck[i],deck[j]]=[deck[j],deck[i]];}
  return {count,hostToken:token(),deck,players:[],hpRounds:[],lastSettlement:null,pendingHunt:null,round:1,done:false,events:[],order:[],drawn:null,
- sales:[null,null],deadline:0,left:240000,processed:[],config:{initial:10,stipend:5},scepterUsed:false};
+ initialHp:30,drawHistory:[],sales:[null,null],deadline:0,left:240000,processed:[],config:{initial:10,stipend:5},scepterUsed:false};
 }
 export function syncHpRound(room, stage='current') {
  const legacy = !room.hpRounds;
@@ -97,9 +97,10 @@ export function submitStrategy(room,secret,encounterId,choice,now=Date.now()) {
  const row=hunt.choices.a,column=hunt.choices.b;
  const type=a.identity===b.identity?2:beats[a.identity]===b.identity?0:1;
  const [gainA,gainB]=matrices[type][row][column];
- a.hp+=gainA;b.hp+=gainB;b.safe=true;
+ a.hp+=gainA;b.hp+=gainB;
+ if(gainA<0)a.safe=true;if(gainB<0)b.safe=true;
  room.events.push({encounterId:hunt.id,round:room.round,at:now,a:a.id,b:b.id,aSeat:a.seat,bSeat:b.seat,row,column,gainA,gainB});
- if(hunt.extraId)room.extraTurns.find(e=>e.id===hunt.extraId).used=true;
+ if(hunt.extraId){const extra=room.extraTurns.find(e=>e.id===hunt.extraId);extra.used=true;extra.targetSeat=b.seat;}
  room.pendingHunt=null;
  settle(room,'hunt',now,before);
 }
@@ -154,7 +155,7 @@ export function useSkill(room,secret,body,now=Date.now()){
     if(!room.order.length)fail('请先等待摇号');
     const recipients=[body.target,body.target2].map(seat=>room.players.find(p=>p.seat===seat&&p.alive));
     if(recipients.some(p=>!p))fail('请选择两次机会的使用者');
-    for(const p of recipients)room.extraTurns.push({id:token(),round:room.round,seat:p.seat,used:false});card.used=true;
+    for(const p of recipients)room.extraTurns.push({id:token(),round:room.round,seat:p.seat,cardId:card.id,used:false});card.used=true;
    }else if(card.type===4){
     const h=room.pendingHunt;
     if(!h||h.bSeat!==player.seat||h.redirected)fail('仅在被捕食时可用，不可连续转移');
@@ -172,6 +173,7 @@ export function useSkill(room,secret,body,now=Date.now()){
  room.skillOps.push(body.operation);room.skillOps=room.skillOps.slice(-100);
  settle(room,'skill',now,before);
 }
+function wolfTargets(room,extra){return (room.extraTurns??[]).filter(e=>e.round===room.round&&e.used&&e.targetSeat&&(extra.cardId?e.cardId===extra.cardId:true)).map(e=>e.targetSeat);}
 export function turnView(room) {
  const completed=new Set([
   ...room.events.filter(e=>e.round===room.round).map(e=>e.aSeat),
@@ -181,8 +183,8 @@ export function turnView(room) {
  const deferred=(room.deferredTurns??[]).filter(e=>e.round===room.round);
  const rank=seat=>{const i=deferred.findLastIndex(e=>e.seat===seat);return i<0?-1:i;};
  remaining.sort((a,b)=>rank(a)-rank(b));
- const extra=(room.extraTurns??[]).filter(e=>e.round===room.round&&!e.used&&room.players.some(p=>p.seat===e.seat&&p.alive)&&room.players.some(p=>p.alive&&p.seat!==e.seat));
- return {ready:room.order.length>0,current:room.done?null:remaining[0]??extra[0]?.seat??null,extraId:remaining.length?null:extra[0]?.id??null,remaining:[...remaining,...extra.map(e=>e.seat)],completed:[...completed]};
+ const extra=(room.extraTurns??[]).filter(e=>e.round===room.round&&!e.used&&room.players.some(p=>p.seat===e.seat&&p.alive)&&room.players.some(p=>p.alive&&p.seat!==e.seat&&!wolfTargets(room,e).includes(p.seat)));
+ return {excludedTargets:remaining.length||!extra.length?[]:wolfTargets(room,extra[0]),ready:room.order.length>0,current:room.done?null:remaining[0]??extra[0]?.seat??null,extraId:remaining.length?null:extra[0]?.id??null,remaining:[...remaining,...extra.map(e=>e.seat)],completed:[...completed]};
 }
 export function playerAction(room,secret,body,now=Date.now()) {
  const player=room.players.find(p=>p.secret===secret);
@@ -251,11 +253,22 @@ export function action(room,body,now=Date.now()) {
   if(!room.sales.every(Boolean))fail('请先完成本轮技能和补给拍卖');
   if(room.done||room.players.length!==room.count) fail('请先等待所有玩家入场');
   if(room.pendingHunt||room.events.some(e=>e.round===room.round)||(room.passes??[]).some(e=>e.round===room.round))fail('本轮已经开始行动，不能重新摇号',409);
-  const first=body.first ? integer(body.first,1,room.count) : randomInt(room.count)+1;
+  room.drawHistory??=[];
+  let first;
+  if(body.first)first=integer(body.first,1,room.count);
+  else if(room.drawn)first=room.drawn;
+  else {
+   const used=new Set(room.drawHistory.filter(e=>!e.designated).map(e=>e.seat));
+   const pool=room.players.filter(p=>p.alive&&!used.has(p.seat));
+   if(!pool.length)fail('所有存活玩家都已被摇中过，本局不能重复摇号');
+   first=pool[randomInt(pool.length)].seat;
+  }
+  if(!room.players.some(p=>p.alive&&p.seat===first))fail('请选择存活玩家');
   if(body.first){
    if(room.round!==5||!room.sales[0]?.seat||room.scepterUsed) fail('森林权杖当前不可用');
    room.scepterUsed=true;
   }
+  if(!room.drawHistory.some(e=>e.round===room.round&&e.seat===first))room.drawHistory.push({round:room.round,seat:first,designated:!!body.first});
   room.drawn=first;
   room.order=room.players.filter(p=>p.alive).map(p=>p.seat).sort((a,b)=>(a-first+room.count)%room.count-(b-first+room.count)%room.count);
  } else if(body.action==='adjust'){
@@ -289,7 +302,7 @@ export function action(room,body,now=Date.now()) {
   const a=room.players.find(p=>p.alive&&p.seat===body.a);
   const b=room.players.find(p=>p.alive&&p.seat===body.b);
   const extraId=room.order.length?turnView(room).extraId:null;
-  if(!a||!b||a===b||(b.safe&&!extraId)) fail('请选择合法捕食目标');
+  if(!a||!b||a===b||(b.safe&&!extraId)||(extraId&&turnView(room).excludedTargets.includes(b.seat))) fail('请选择合法捕食目标');
   breach(room,a.seat,b.seat);
   room.pendingHunt={id:token(),a:a.id,b:b.id,aSeat:a.seat,bSeat:b.seat,choices:{a:null,b:null},...(extraId?{extraId}:{})};
  } else if(body.action==='cancelHunt'){

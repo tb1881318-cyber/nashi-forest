@@ -69,7 +69,7 @@ export async function api(request,env){
     if(room.players.some(p=>p.id.toLocaleLowerCase()===playerId.toLocaleLowerCase()))fail('这个 ID 已被使用，请换一个');
     if(room.players.length>=room.count||room.done)fail('本局名额已满');
     const identity=room.deck.pop();
-    const p={id:playerId,seat:room.players.length+1,secret,identity,hp:20,coins:room.config.initial+room.config.stipend,alive:true,safe:false};
+    const p={id:playerId,seat:room.players.length+1,secret,identity,hp:room.initialHp??20,coins:room.config.initial+room.config.stipend,alive:true,safe:false};
     room.players.push(p);
     syncHpRound(room);
     return {id:p.id,seat:p.seat};

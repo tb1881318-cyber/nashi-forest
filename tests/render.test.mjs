@@ -46,14 +46,14 @@ test('Render HTTP 与真实 PostgreSQL 引擎：7 人并发注册、双盲结算
   assert.equal((await call(path+'/strategy',{encounterId:duel,choice:0},a)).status,200);
   const other=(await call(path+'/me',undefined,b)).data;
   assert.equal(other.duel.choice,null);assert.equal(other.state.pendingHunt.choices,undefined);
-  assert.ok(other.state.players.every(p=>p.hp===20&&!p.identity&&!p.secret));
+  assert.ok(other.state.players.every(p=>p.hp===30&&!p.identity&&!p.secret));
   await call(path+'/strategy',{encounterId:duel,choice:1},b);
   const final=(await call(path)).data;assert.equal(final.events.length,1);
   assert.equal(final.events[0].gainA+final.events[0].gainB,0);
   await call(path+'/strategy',{encounterId:duel,choice:1},b);
   assert.equal((await call(path)).data.events.length,1);
   await close();base=await start();
-  assert.deepEqual((await call(path)).data,final);
+  const restored=(await call(path)).data;delete restored.serverTime;delete final.serverTime;assert.deepEqual(restored,final);
   const me=(await call(path+'/me',undefined,a)).data;
   assert.ok(['J','Q','K'].includes(me.identity));assert.equal(me.hpHistory.length,1);
  } finally {await close();await pg.close();}
@@ -80,7 +80,7 @@ test('Netlify 函数适配保持对局和双盲隐私',async()=>{
   await call(path+'/strategy',{encounterId,choice:1},a);
   const before=(await call(path+'/me',undefined,b)).data;
   assert.equal(before.duel.choice,null);assert.equal(before.state.pendingHunt.choices,undefined);
-  assert.ok(before.state.players.every(p=>p.hp===20&&!p.identity));
+  assert.ok(before.state.players.every(p=>p.hp===30&&!p.identity));
   await call(path+'/strategy',{encounterId,choice:0},b);
   const final=(await call(path)).data;assert.equal(final.events.length,1);
   assert.equal(final.events[0].gainA+final.events[0].gainB,0);
