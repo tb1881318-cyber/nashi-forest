@@ -299,3 +299,28 @@ test('技能 API 将成交卡交给获拍玩家，鹰眼结果不泄露到公共
  assert.equal(other.skills.intel.length,0);assert.equal(other.skills.cards.length,0);
  assert.ok(!JSON.stringify((await call(db,path)).data).includes('identity'));
 });
+
+test('玩家转让 HP：身份验证、金额校验、双方历史同步、重复请求和并发余额保护',async()=>{
+ const db=database();const {data:created}=await call(db,'/rooms',{count:3});
+ const path='/rooms/'+created.room,secrets=[token(),token(),token()];
+ for(let i=0;i<3;i++)await call(db,path+'/join',{id:'转让'+i,secret:secrets[i]});
+ const transfer=(body,secret=secrets[0])=>call(db,path+'/transfer',{round:1,operation:crypto.randomUUID(),...body},secret);
+ assert.equal((await transfer({target:2,amount:1},token())).status,401);
+ for(const amount of [0,-1,1.5,21])assert.equal((await transfer({target:2,amount})).status,400);
+ assert.equal((await transfer({target:1,amount:1})).status,400);
+ assert.equal((await transfer({target:2,amount:1,round:2})).status,409);
+ const operation=crypto.randomUUID();
+ const first=await transfer({target:2,amount:4,operation});assert.equal(first.status,200);assert.equal(first.data.hp,16);
+ assert.equal(first.data.hpHistory[0].current,16);
+ const recipient=(await call(db,path+'/me',undefined,secrets[1])).data;
+ assert.equal(recipient.hp,24);assert.equal(recipient.hpHistory[0].current,24);
+ const repeat=await transfer({target:2,amount:4,operation});assert.equal(repeat.data.hp,16);
+ assert.equal(repeat.data.state.transfers.length,1);
+ const concurrent=await Promise.all([transfer({target:2,amount:12}),transfer({target:3,amount:12})]);
+ assert.deepEqual(concurrent.map(r=>r.status).sort(),[200,400]);
+ const state=(await call(db,path)).data;
+ assert.equal(state.players.reduce((sum,p)=>sum+p.hp,0),60);
+ assert.equal(state.players[0].hp,4);assert.equal(state.transfers.length,2);
+ assert.equal(state.lastSettlement.kind,'transfer');assert.ok(!JSON.stringify(state.transfers).includes('identity'));
+ const final=await transfer({target:2,amount:4});assert.equal(final.data.hp,0);assert.equal(final.data.alive,true);
+});

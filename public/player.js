@@ -97,6 +97,30 @@ function renderSkills(){
   box.append(p);
  }
 }
+let transferOperation=null,transferSignature=null;
+function renderTransfer(){
+ const targets=me.state.players.filter(p=>p.alive&&p.seat!==me.seat);
+ setOptions($('transferTarget'),targets,'选择接收玩家');
+ $('transferAmount').max=String(Math.max(0,me.hp));
+ $('transferButton').disabled=strategySubmitting||!me.alive||me.state.done||me.hp<1||!targets.length;
+ $('transferHint').textContent='当前可转让 '+Math.max(0,me.hp)+' HP。转出后立即扣除，接收方同步增加；HP≤0 在轮末淘汰。';
+}
+$('transferForm').onsubmit=async event=>{
+ event.preventDefault();if(strategySubmitting||!me)return;
+ const target=Number($('transferTarget').value),amount=Number($('transferAmount').value);
+ const recipient=me.state.players.find(p=>p.seat===target);
+ if(!recipient||!Number.isInteger(amount)||amount<1||amount>me.hp){$('transferStatus').textContent='请选择接收玩家，并输入不超过可用 HP 的正整数';return;}
+ if(!confirm('确认向 '+playerLabel(recipient)+' 转让 '+amount+' HP？你将剩余 '+(me.hp-amount)+' HP。'))return;
+ const signature=JSON.stringify([roomId,me.state.round,target,amount]);
+ if(signature!==transferSignature){transferSignature=signature;transferOperation=crypto.randomUUID();}
+ strategySubmitting=true;renderTransfer();renderDuel();
+ try{
+  me=await request('/rooms/'+roomId+'/transfer',{target,amount,round:me.state.round,operation:transferOperation},playerSecret);
+  transferOperation=null;transferSignature=null;lastRendered=null;render();
+  $('transferAmount').value='';$('transferStatus').textContent='已向 '+playerLabel(recipient)+' 转让 '+amount+' HP';
+ }catch(error){$('transferStatus').textContent=error.message;}
+ finally{strategySubmitting=false;renderTransfer();renderTurn();renderDuel();}
+};
 function renderTurn(){
  const state=me.state,turn=state.turn;
  const own=turn?.current===me.seat;
@@ -152,6 +176,7 @@ function render(){
   td.colSpan=4;td.textContent='旧局从下一次结算起记录';tr.append(td);$('hpHistory').append(tr);
  }
  renderSkills();
+ renderTransfer();
  renderTurn();
  renderDuel();
  renderEncounters();

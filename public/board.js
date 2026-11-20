@@ -46,7 +46,7 @@ function render(){
  const active=state.players.find(p=>p.seat===state.turn?.current);
  if(state.order.length)$('order').textContent+=(active?' · 当前轮到 '+playerLabel(active):' · 本轮行动完成');
  const settlement=state.lastSettlement;
- const kind={auction:'拍卖结算',hunt:'捕食结算',adjust:'生命值调整',pass:'放弃捕食',skill:'技能结算'};
+ const kind={auction:'拍卖结算',hunt:'捕食结算',adjust:'生命值调整',pass:'放弃捕食',skill:'技能结算',transfer:'生命值转让'};
  $('settlementTitle').textContent=settlement?'第 '+settlement.round+' 轮 · '+kind[settlement.kind]+'后全员 HP':'场上玩家';
  $('seats').replaceChildren();
  for(let seat=1;seat<=state.count;seat++){
@@ -68,6 +68,7 @@ function render(){
   const row=document.createElement('li');
   const entries=state.events.filter(e=>e.round===round).map(e=>e.aSeat+'号 → '+e.bSeat+'号：'+strategy[e.row]+' / '+strategy[e.column]+'，'+score(e.gainA)+' / '+score(e.gainB)+' HP');
   for(const pass of (state.passes??[]).filter(e=>e.round===round))entries.push(pass.seat+'号放弃（'+(pass.cost?'−'+pass.cost+' HP':'免费')+'）');
+  for(const transfer of (state.transfers??[]).filter(e=>e.round===round))entries.push(transfer.fromSeat+'号向'+transfer.toSeat+'号转让'+transfer.amount+' HP');
   for(const log of (state.skillLog??[]).filter(e=>e.round===round))entries.push(log.text);
   row.textContent='第 '+round+' 轮　'+(entries.join(' ｜ ')||'等待行动');
   $('history').append(row);

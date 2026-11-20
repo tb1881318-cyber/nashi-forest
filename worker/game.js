@@ -206,9 +206,25 @@ export function playerAction(room,secret,body,now=Date.now()) {
  } else fail('未知玩家操作');
  room.playerOperations.push(body.operation);room.playerOperations=room.playerOperations.slice(-100);
 }
+export function transferHp(room,secret,body,now=Date.now()){
+ const from=room.players.find(p=>p.secret===secret);
+ if(!from)fail('请使用自己的玩家台转让生命值',401);
+ room.transfers??=[];
+ if(room.transfers.some(t=>t.id===body.operation&&t.fromSeat===from.seat))return;
+ if(room.done||!from.alive)fail('对局结束或淘汰后不能转让');
+ if(body.round!==room.round)fail('轮次已更新，请重新确认转让',409);
+ const to=room.players.find(p=>p.seat===body.target&&p.alive);
+ if(!to||to===from)fail('请选择另一名未淘汰玩家');
+ const amount=integer(body.amount,1,1000000);
+ if(amount>from.hp)fail('转让数量不能超过当前可用生命值');
+ const before=new Map(room.players.map(p=>[p.seat,p.hp]));
+ from.hp-=amount;to.hp+=amount;
+ room.transfers.push({id:body.operation,round:room.round,at:now,fromSeat:from.seat,toSeat:to.seat,from:from.id,to:to.id,amount});
+ settle(room,'transfer',now,before);
+}
 export function publicRoom(room) {
  initializeSkills(room);
- return {skillLog:room.skillLog,contracts:room.contracts,phase:!room.sales.every(Boolean)?'拍卖':room.order.length?'行动':'谈判与摇号',count:room.count,players:room.players.map(({secret,identity,...p})=>p),
+ return {transfers:room.transfers??[],skillLog:room.skillLog,contracts:room.contracts,phase:!room.sales.every(Boolean)?'拍卖':room.order.length?'行动':'谈判与摇号',count:room.count,players:room.players.map(({secret,identity,...p})=>p),
  turn:turnView(room),passes:room.passes??[],pendingHunt:pendingHuntView(room),round:room.round,done:room.done,events:room.events,order:room.order,drawn:room.drawn,
  lastSettlement:room.lastSettlement??null,sales:room.sales,deadline:room.deadline,left:room.left,config:room.config,result:room.result??''};
 }
