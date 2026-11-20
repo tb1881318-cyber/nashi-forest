@@ -85,7 +85,7 @@ function renderSkills(){
   const discard=document.createElement('button');discard.type='button';discard.textContent='放弃此卡';discard.onclick=()=>{if(confirm('确认放弃'+info.name+'？'))skillCommand({cardId:card.id,discard:true});};
   panel.append(title,details,form,discard);box.append(panel);
  }
- for(const intel of data.intel){const p=document.createElement('p');p.textContent='鹰眼情报（仅你可见）：'+intel.seat+'号 '+intel.id+' 的身份为 '+intel.identity+' · '+animals[intel.identity];box.append(p);}
+ for(const intel of data.intel){const p=document.createElement('p');p.textContent='鹰眼情报（仅你可见）：'+intel.seat+'号 '+intel.id+' 的身份为 '+animals[intel.identity];box.append(p);}
  for(const contract of (me.state.contracts??[]).filter(c=>c.round===me.state.round&&[c.from,c.to].includes(me.seat)&&c.status!=='invited')){
   const p=document.createElement('p');
   p.textContent='生死契约 '+contract.from+'号 / '+contract.to+'号：'+({active:'生效中，双方各托管3 HP',declined:'邀请已拒绝',betrayed:'已背叛，保证金已结算',returned:'守约，保证金已返还'}[contract.status]??contract.status);
@@ -137,7 +137,7 @@ function render(){
  lastRendered=snapshot;
  $('join').hidden=true;$('hand').hidden=false;$('name').textContent=me.id;
  $('seat').textContent=me.seat+'号座 · '+me.state.count+'人局';
- $('identity').textContent=revealed?me.identity+' · '+animals[me.identity]:'♠';
+ $('identity').textContent=revealed?animals[me.identity]:'♠';
  $('hp').textContent=me.hp+' HP · '+me.coins+' 金币'+(me.alive?'':' · 已淘汰');
  $('hpHistory').replaceChildren();
  for(const round of me.hpHistory??[]){

@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-const animals={J:'象',Q:'虎',K:'鼠'};
+const animals={J:'象',Q:'狐狸',K:'鼠'};
 const roomParam=new URLSearchParams(location.search).get('room');
 const playerLabel=p=>p.id+' · '+p.seat+'号';
 function secret(){return Array.from(crypto.getRandomValues(new Uint8Array(24)),n=>n.toString(16).padStart(2,'0')).join('');}

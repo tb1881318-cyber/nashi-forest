@@ -24,7 +24,7 @@ function render(){
   const p=state.players.find(p=>p.seat===seat),card=document.createElement('article');
   const name=document.createElement('strong');name.textContent=p?playerLabel(p):seat+'号 · 等待入场';
   const identity=document.createElement('p');identity.className='host-identity';
-  identity.textContent=p?.identity?(identitiesVisible?p.identity+' · '+animals[p.identity]:'已隐藏'):'等待入场';
+  identity.textContent=p?.identity?(identitiesVisible?animals[p.identity]:'已隐藏'):'等待入场';
   card.append(name,identity);$('seats').append(card);
  }
 }

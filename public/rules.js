@@ -22,6 +22,6 @@ tabs('auctionTabs', rounds.map((r,i)=>'第 '+(i+1)+' 轮'),i=>{
   document.querySelector('#auctionPreview').innerHTML=`<div><strong>${r.icon} ${r.name}</strong><p>${r.value}</p></div><strong class="gain">补给 +${r.hp} HP</strong>`;
 });
 tabs('matrixTabs',['A 克制 B','B 克制 A','身份相同'],i=>{
-  const examples=['A＝J，B＝Q','A＝J，B＝K','A＝J，B＝J'];
+  const examples=['A＝象，B＝狐狸','A＝象，B＝鼠','A＝象，B＝象'];
   document.querySelector('#matrixPreview').innerHTML=`<p>${examples[i]}</p>`+matrixHTML(Nash.matrices[i]);
 });
