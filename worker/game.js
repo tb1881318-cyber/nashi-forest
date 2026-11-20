@@ -124,6 +124,9 @@ function breach(room,a,b){
   room.skillLog.push({round:room.round,text:a+'号背叛契约，'+b+'号获得6 HP保证金'});
  }
 }
+export function contractAvailable(room){
+ return !room.done&&room.sales.every(Boolean)&&!room.pendingHunt&&!room.events.some(e=>e.round===room.round)&&!(room.passes??[]).some(e=>e.round===room.round&&!room.players.find(p=>p.seat===e.seat)?.bot);
+}
 export function useSkill(room,secret,body,now=Date.now()){
  initializeSkills(room);
  const player=room.players.find(p=>p.secret===secret);
@@ -136,7 +139,7 @@ export function useSkill(room,secret,body,now=Date.now()){
   if(!c)fail('邀请已失效');
   const owner=room.players.find(p=>p.seat===c.from);
   if(body.accept===true){
-   if(!room.sales.every(Boolean)||room.order.length||!owner.alive||owner.hp<3||player.hp<3)fail('契约需在拍卖结束后的谈判阶段同意，双方至少有3 HP');
+   if(!contractAvailable(room)||!owner.alive||owner.hp<3||player.hp<3)fail('契约需在拍卖结束、首场捕食开始前同意，双方至少有3 HP');
    owner.hp-=3;player.hp-=3;c.status='active';
   }else c.status='declined';
  }else{
@@ -149,7 +152,7 @@ export function useSkill(room,secret,body,now=Date.now()){
     if(!target||target===player)fail('请选择其他存活玩家');
     card.intel={seat:target.seat,id:target.id,identity:target.identity};card.used=true;
    }else if(card.type===2){
-    if(!room.sales.every(Boolean)||room.order.length||!target||target===player||target.bot)fail('请在拍卖结束后的谈判阶段选择其他存活玩家');
+    if(!contractAvailable(room)||!target||target===player||target.bot)fail('请在拍卖结束、首场捕食开始前选择其他存活真人玩家');
     room.contracts.push({id:token(),round:room.round,from:player.seat,to:target.seat,status:'invited'});card.used=true;
    }else if(card.type===3){
     if(!room.order.length)fail('请先等待摇号');
@@ -234,7 +237,7 @@ export function transferHp(room,secret,body,now=Date.now()){
 export function publicRoom(room) {
  initializeSkills(room);
  return {transfers:room.transfers??[],skillLog:room.skillLog,contracts:room.contracts,phase:!room.sales.every(Boolean)?'拍卖':room.order.length?'行动':'谈判与摇号',count:room.count,players:room.players.map(({secret,identity,...p})=>p),
- testMode:!!room.testMode,turn:turnView(room),passes:room.passes??[],pendingHunt:pendingHuntView(room),round:room.round,done:room.done,events:room.events,order:room.order,drawn:room.drawn,
+ contractAvailable:contractAvailable(room),testMode:!!room.testMode,turn:turnView(room),passes:room.passes??[],pendingHunt:pendingHuntView(room),round:room.round,done:room.done,events:room.events,order:room.order,drawn:room.drawn,
  serverTime:Date.now(),lastSettlement:room.lastSettlement??null,sales:room.sales,deadline:room.deadline,left:room.left,config:room.config,result:room.result??''};
 }
 export function action(room,body,now=Date.now()) {

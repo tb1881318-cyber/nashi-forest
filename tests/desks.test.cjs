@@ -111,3 +111,12 @@ test('三人到齐时主持人显示开始对局入口并直达本轮拍卖',asy
  assert.equal($('boardLink').href,'board.html?room=3456#roundAuction');
  assert.match($('startHint').textContent,/人数已齐/);
 });
+test('补给拍卖结束后契约按钮即时解除置灰，首场捕食开始后关闭',()=>{
+ const sample={seat:1,skills:{cards:[{id:'contract',type:2}],intel:[],invites:[]},state:{round:2,sales:[{seat:1},null],order:[],players:[{seat:1,id:'甲',alive:true},{seat:2,id:'乙',alive:true}],contracts:[],contractAvailable:false}};
+ const {context,$}=fixture('player',{roomParam:null,sample,rounds:[{}, {icon:'🤝',name:'生死契约',effect:'',timing:'',limit:''}]});
+ const find=el=>el.textContent==='谈判阶段：邀请建立契约'?el:el.children.map(find).find(Boolean);
+ vm.runInContext('me=sample;renderSkills()',context);assert.equal(find($('mySkills')).disabled,true);
+ sample.state.sales[1]={unsold:true};sample.state.contractAvailable=true;sample.state.order=[1,2];
+ vm.runInContext('renderSkills()',context);assert.equal(find($('mySkills')).disabled,false);
+ sample.state.contractAvailable=false;vm.runInContext('renderSkills()',context);assert.equal(find($('mySkills')).disabled,true);
+});

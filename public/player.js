@@ -57,7 +57,7 @@ async function skillCommand(body){
  finally{strategySubmitting=false;renderTurn();renderDuel();}
 }
 function renderSkills(){
- const snapshot=JSON.stringify([me.skills,me.state.contracts,me.state.pendingHunt,me.state.order,me.state.players]);
+ const snapshot=JSON.stringify([me.skills,me.state.contracts,me.state.pendingHunt,me.state.order,me.state.players,me.state.sales,me.state.phase,me.state.contractAvailable,!!me.state.deadline]);
  if(snapshot===skillSnapshot)return;skillSnapshot=snapshot;
  const box=$('mySkills');box.replaceChildren();
  const data=me.skills??{cards:[],intel:[],invites:[]};
@@ -79,7 +79,8 @@ function renderSkills(){
   if(card.type===3){second=document.createElement('select');second.required=true;const secondLabel=document.createElement('label');secondLabel.textContent='第二次额外机会交给谁';second.setAttribute('aria-label',secondLabel.textContent);second.add(new Option('请选择玩家',''));for(const p of targets)second.add(new Option(playerLabel(p),p.seat));secondLabel.append(second);form.append(secondLabel);}
   const button=document.createElement('button');button.className='primary top-gap';button.textContent=card.type===2?'谈判阶段：邀请建立契约':card.type===3?'分配两次额外机会':card.type===4?'支付3 HP并转移捕食':card.type===5?'指定首位行动玩家':'秘密查看身份';
   if(card.type===4)button.disabled=me.state.pendingHunt?.bSeat!==me.seat||me.state.pendingHunt?.redirected;
-  if(card.type===2)button.disabled=!me.state.sales.every(Boolean)||me.state.order.length>0;
+  if(card.type===2)button.disabled=me.state.contractAvailable===false||!me.state.sales.every(Boolean);
+  if(card.type===2){const hint=document.createElement('p');hint.className='notice';hint.textContent=button.disabled?'拍卖完成后、首场捕食开始前可建立契约。':'现在可以建立契约：选择另一名玩家，点击邀请，对方同意后生效。';form.append(hint);}
   if(card.type===3)button.disabled=!me.state.order.length;
   form.append(button);form.onsubmit=e=>{e.preventDefault();skillCommand({cardId:card.id,target:Number(select.value),target2:second?Number(second.value):undefined});};
   const discard=document.createElement('button');discard.type='button';discard.textContent='放弃此卡';discard.onclick=()=>{if(confirm('确认放弃'+info.name+'？'))skillCommand({cardId:card.id,discard:true});};
@@ -93,7 +94,7 @@ function renderSkills(){
  }
  for(const invite of data.invites){
   const p=document.createElement('p');p.textContent=invite.from+'号邀请你建立生死契约，接受后双方各托管3 HP。';
-  for(const accept of [true,false]){const b=document.createElement('button');b.textContent=accept?'同意并缴纳3 HP':'拒绝';b.onclick=()=>skillCommand({contractId:invite.id,accept});p.append(b);}
+  for(const accept of [true,false]){const b=document.createElement('button');b.textContent=accept?'同意并缴纳3 HP':'拒绝';if(accept)b.disabled=me.state.contractAvailable===false;b.onclick=()=>skillCommand({contractId:invite.id,accept});p.append(b);}
   box.append(p);
  }
 }
