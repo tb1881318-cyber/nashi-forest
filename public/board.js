@@ -29,7 +29,6 @@ function renderAuction(){
   fold.append(title,effect);
   const supply=document.createElement('p');supply.textContent='生命补给：+'+info.hp+' HP（成交后自动补给）';
   box.append(fold,supply);
-  if(hostToken&&!state.sales.every(Boolean))$('controls').open=true;
  }
  const sales=state.sales.map((s,i)=>(i?'生命补给':info.name)+'：'+(!s?'待拍卖':s.unsold?'流拍':s.id+' · '+s.price+' 金币')).join(' ｜ ');
  let line=$('auctionSaleLine');
@@ -103,7 +102,7 @@ async function pull(){
  try{const current=generation;const updated=await request('/rooms/'+roomParam);if(current!==generation)return;state=updated;render();}
  catch(e){$('status').textContent=e.message;return false;}
 }
-$('controlJump').onclick=()=>{$('controls').open=true;};
+$('controlJump').onclick=()=>{$('controls').scrollIntoView({behavior:'smooth',block:'start'});};
 $('previewVoice').onclick=()=>{if(!announcer.preview())$('actionStatus').textContent='当前浏览器不支持语音，请用 Chrome 或 Edge 打开试听。';};
 $('enableVoice').onclick=()=>{
  const enabled=announcer.toggle();
