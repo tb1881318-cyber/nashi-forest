@@ -1,0 +1,7 @@
+{
+  "release": "2026-11-20-balanced-rules",
+  "initialHp": 30,
+  "protection": "loser",
+  "wolfDistinctTargets": true,
+  "starterPool": "reset-after-all-survivors"
+}
