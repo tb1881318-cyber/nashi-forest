@@ -127,13 +127,13 @@ function renderTurn(){
  const pending=state.pendingHunt;
  const current=state.players.find(p=>p.seat===turn?.current);
  $('turnTitle').textContent=state.done?'对局已结束':!me.alive?'你已淘汰':pending?(me.duel?'请在下方锁定策略':'等待当前双方结算'):!turn?.ready?'等待主持人摇号':!current?'本轮行动已完成':own?'轮到你行动':'未到你的次序';
- $('turnHint').textContent=current?'当前行动：'+playerLabel(current)+(own?'，请选择目标或放弃。':'，请等待。'):turn?.ready?'等待主持人进行轮末结算。':'摇号后按座位顺序依次行动。';
+ $('turnHint').textContent=current?'当前行动：'+playerLabel(current)+(own?'，请选择捕食目标，或点击跳过本次捕食。':'，请等待。'):turn?.ready?'等待主持人进行轮末结算。':'摇号后按座位顺序依次行动。';
  const legal=state.players.filter(p=>p.alive&&p.seat!==me.seat&&!p.safe);
  $('turnForm').hidden=!own||!!pending||!me.alive||state.done;
  setOptions($('turnTarget'),legal,'选择捕食目标');
  $('startHunt').disabled=strategySubmitting||!legal.length;
  $('passTurn').disabled=strategySubmitting;
- $('passTurn').textContent=legal.length?'放弃捕食（−2 HP）':'无合法目标，免费结束';
+ $('passTurn').textContent=legal.length?'暂时跳过（不扣 HP，稍后轮回）':'无合法目标，免费结束';
 }
 function renderDuel(){
  const duel=me.duel;
@@ -219,7 +219,7 @@ async function takeTurn(action){
 $('turnForm').onsubmit=event=>{event.preventDefault();takeTurn('hunt');};
 $('passTurn').onclick=()=>{
  const legal=me.state.players.some(p=>p.alive&&p.seat!==me.seat&&!p.safe);
- if(!legal||confirm('仍有合法目标，放弃捕食将扣除 2 HP，确认结束本次行动？'))takeTurn('pass');
+ takeTurn(legal?'defer':'pass');
 };
 $('strategyForm').onsubmit=async event=>{
  event.preventDefault();

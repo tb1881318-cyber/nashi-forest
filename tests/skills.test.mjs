@@ -63,3 +63,12 @@ test('森林权杖指定实际先手，技能上限由服务端检查，过期�
  assert.throws(()=>buy(other),/已满两张/);
  skill(other,1,{cardId:'a',discard:true});const granted=buy(other);assert.equal(granted.type,4);
 });
+test('暂时跳过不扣生命且保留行动，其他玩家行动后轮回，重复请求不重复排队',()=>{
+ const room=setup(1);room.order=[1,2,3];
+ const play=(seat,operation=token())=>playerAction(room,room.players[seat-1].secret,{action:'defer',round:1,operation});
+ const op=token();play(1,op);play(1,op);
+ assert.equal(room.players[0].hp,20);assert.deepEqual(turnView(room).remaining,[2,3,1]);
+ play(2);assert.equal(turnView(room).current,3);
+ play(3);assert.equal(turnView(room).current,1);
+ assert.equal(room.passes?.length??0,0);assert.ok(room.players.every(p=>p.hp===20));
+});

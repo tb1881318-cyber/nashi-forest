@@ -178,6 +178,9 @@ export function turnView(room) {
   ...(room.passes??[]).filter(e=>e.round===room.round).map(e=>e.seat)
  ]);
  const remaining=room.order.filter(seat=>!completed.has(seat)&&room.players.some(p=>p.seat===seat&&p.alive));
+ const deferred=(room.deferredTurns??[]).filter(e=>e.round===room.round);
+ const rank=seat=>{const i=deferred.findLastIndex(e=>e.seat===seat);return i<0?-1:i;};
+ remaining.sort((a,b)=>rank(a)-rank(b));
  const extra=(room.extraTurns??[]).filter(e=>e.round===room.round&&!e.used&&room.players.some(p=>p.seat===e.seat&&p.alive)&&room.players.some(p=>p.alive&&p.seat!==e.seat&&!p.safe));
  return {ready:room.order.length>0,current:room.done?null:remaining[0]??extra[0]?.seat??null,extraId:remaining.length?null:extra[0]?.id??null,remaining:[...remaining,...extra.map(e=>e.seat)],completed:[...completed]};
 }
@@ -195,6 +198,10 @@ export function playerAction(room,secret,body,now=Date.now()) {
  if(body.action==='hunt') {
   action(room,{action:'hunt',a:player.seat,b:body.target,operation:body.operation},now);
   if(turn.extraId)room.pendingHunt.extraId=turn.extraId;
+ } else if(body.action==='defer') {
+  room.deferredTurns??=[];
+  room.deferredTurns.push({round:room.round,seat:player.seat,at:now});
+  if(turn.extraId){const i=room.extraTurns.findIndex(e=>e.id===turn.extraId);room.extraTurns.push(...room.extraTurns.splice(i,1));}
  } else if(body.action==='pass') {
   const before=new Map(room.players.map(p=>[p.seat,p.hp]));
   const legal=room.players.some(p=>p.alive&&p.seat!==player.seat&&!p.safe);
