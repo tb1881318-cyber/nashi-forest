@@ -233,7 +233,7 @@ export function publicRoom(room) {
  initializeSkills(room);
  return {transfers:room.transfers??[],skillLog:room.skillLog,contracts:room.contracts,phase:!room.sales.every(Boolean)?'拍卖':room.order.length?'行动':'谈判与摇号',count:room.count,players:room.players.map(({secret,identity,...p})=>p),
  turn:turnView(room),passes:room.passes??[],pendingHunt:pendingHuntView(room),round:room.round,done:room.done,events:room.events,order:room.order,drawn:room.drawn,
- lastSettlement:room.lastSettlement??null,sales:room.sales,deadline:room.deadline,left:room.left,config:room.config,result:room.result??''};
+ serverTime:Date.now(),lastSettlement:room.lastSettlement??null,sales:room.sales,deadline:room.deadline,left:room.left,config:room.config,result:room.result??''};
 }
 export function action(room,body,now=Date.now()) {
  if(room.processed.includes(body.operation)) return;

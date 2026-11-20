@@ -21,6 +21,8 @@ async function request(path,body,auth){
   }
   const result=await response.json();
   if(!response.ok)throw new Error(result.error||'请求失败');
+  const clockState=result.state??result;
+  if(Number.isFinite(clockState.serverTime))clockState.clockOffset=clockState.serverTime-Date.now();
   return result;
  }catch(error){
   if(error.name==='AbortError')throw new Error('连接超时，请稍后重试');
@@ -61,7 +63,8 @@ function setText(id,value){
  if(element.textContent!==value)element.textContent=value;
 }
 function displayClock(room){
- const ms=room.deadline?room.deadline-Date.now():room.left;
+ const now=Date.now()+(room.clockOffset||0);
+ const ms=Math.min(240000,room.deadline?room.deadline-now:room.left);
  const s=Math.ceil(Math.max(0,ms)/1000);
  return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
 }
