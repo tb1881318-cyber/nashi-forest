@@ -135,7 +135,7 @@ export function useSkill(room,secret,body,now=Date.now()){
   if(!c)fail('邀请已失效');
   const owner=room.players.find(p=>p.seat===c.from);
   if(body.accept===true){
-   if(room.order.length||!owner.alive||owner.hp<3||player.hp<3)fail('契约需在摇号前同意，双方至少有3 HP');
+   if(!room.sales.every(Boolean)||room.order.length||!owner.alive||owner.hp<3||player.hp<3)fail('契约需在拍卖结束后的谈判阶段同意，双方至少有3 HP');
    owner.hp-=3;player.hp-=3;c.status='active';
   }else c.status='declined';
  }else{
@@ -148,7 +148,7 @@ export function useSkill(room,secret,body,now=Date.now()){
     if(!target||target===player)fail('请选择其他存活玩家');
     card.intel={seat:target.seat,id:target.id,identity:target.identity};card.used=true;
    }else if(card.type===2){
-    if(room.order.length||!target||target===player)fail('请在摇号前选择其他存活玩家');
+    if(!room.sales.every(Boolean)||room.order.length||!target||target===player)fail('请在拍卖结束后的谈判阶段选择其他存活玩家');
     room.contracts.push({id:token(),round:room.round,from:player.seat,to:target.seat,status:'invited'});card.used=true;
    }else if(card.type===3){
     if(!room.order.length)fail('请先等待摇号');
@@ -181,7 +181,7 @@ export function turnView(room) {
  const deferred=(room.deferredTurns??[]).filter(e=>e.round===room.round);
  const rank=seat=>{const i=deferred.findLastIndex(e=>e.seat===seat);return i<0?-1:i;};
  remaining.sort((a,b)=>rank(a)-rank(b));
- const extra=(room.extraTurns??[]).filter(e=>e.round===room.round&&!e.used&&room.players.some(p=>p.seat===e.seat&&p.alive)&&room.players.some(p=>p.alive&&p.seat!==e.seat&&!p.safe));
+ const extra=(room.extraTurns??[]).filter(e=>e.round===room.round&&!e.used&&room.players.some(p=>p.seat===e.seat&&p.alive)&&room.players.some(p=>p.alive&&p.seat!==e.seat));
  return {ready:room.order.length>0,current:room.done?null:remaining[0]??extra[0]?.seat??null,extraId:remaining.length?null:extra[0]?.id??null,remaining:[...remaining,...extra.map(e=>e.seat)],completed:[...completed]};
 }
 export function playerAction(room,secret,body,now=Date.now()) {
@@ -288,9 +288,10 @@ export function action(room,body,now=Date.now()) {
   if(room.order.length&&turnView(room).current!==body.a)fail('未到这名玩家的行动次序',403);
   const a=room.players.find(p=>p.alive&&p.seat===body.a);
   const b=room.players.find(p=>p.alive&&p.seat===body.b);
-  if(!a||!b||a===b||b.safe) fail('请选择合法捕食目标');
+  const extraId=room.order.length?turnView(room).extraId:null;
+  if(!a||!b||a===b||(b.safe&&!extraId)) fail('请选择合法捕食目标');
   breach(room,a.seat,b.seat);
-  room.pendingHunt={id:token(),a:a.id,b:b.id,aSeat:a.seat,bSeat:b.seat,choices:{a:null,b:null}};
+  room.pendingHunt={id:token(),a:a.id,b:b.id,aSeat:a.seat,bSeat:b.seat,choices:{a:null,b:null},...(extraId?{extraId}:{})};
  } else if(body.action==='cancelHunt'){
   room.pendingHunt=null;
  } else if(body.action==='next'){

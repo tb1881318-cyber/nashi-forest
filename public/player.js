@@ -77,9 +77,9 @@ function renderSkills(){
   label.append(select);form.append(label);
   let second=null;
   if(card.type===3){second=document.createElement('select');second.required=true;const secondLabel=document.createElement('label');secondLabel.textContent='第二次额外机会交给谁';second.setAttribute('aria-label',secondLabel.textContent);second.add(new Option('请选择玩家',''));for(const p of targets)second.add(new Option(playerLabel(p),p.seat));secondLabel.append(second);form.append(secondLabel);}
-  const button=document.createElement('button');button.className='primary top-gap';button.textContent=card.type===2?'邀请建立契约':card.type===3?'分配两次额外机会':card.type===4?'支付3 HP并转移捕食':card.type===5?'指定首位行动玩家':'秘密查看身份';
+  const button=document.createElement('button');button.className='primary top-gap';button.textContent=card.type===2?'谈判阶段：邀请建立契约':card.type===3?'分配两次额外机会':card.type===4?'支付3 HP并转移捕食':card.type===5?'指定首位行动玩家':'秘密查看身份';
   if(card.type===4)button.disabled=me.state.pendingHunt?.bSeat!==me.seat||me.state.pendingHunt?.redirected;
-  if(card.type===2)button.disabled=me.state.order.length>0;
+  if(card.type===2)button.disabled=!me.state.sales.every(Boolean)||me.state.order.length>0;
   if(card.type===3)button.disabled=!me.state.order.length;
   form.append(button);form.onsubmit=e=>{e.preventDefault();skillCommand({cardId:card.id,target:Number(select.value),target2:second?Number(second.value):undefined});};
   const discard=document.createElement('button');discard.type='button';discard.textContent='放弃此卡';discard.onclick=()=>{if(confirm('确认放弃'+info.name+'？'))skillCommand({cardId:card.id,discard:true});};
@@ -127,8 +127,8 @@ function renderTurn(){
  const pending=state.pendingHunt;
  const current=state.players.find(p=>p.seat===turn?.current);
  $('turnTitle').textContent=state.done?'对局已结束':!me.alive?'你已淘汰':pending?(me.duel?'请在下方锁定策略':'等待当前双方结算'):!turn?.ready?'等待主持人摇号':!current?'本轮行动已完成':own?'轮到你行动':'未到你的次序';
- $('turnHint').textContent=current?'当前行动：'+playerLabel(current)+(own?'，请选择捕食目标，或点击跳过本次捕食。':'，请等待。'):turn?.ready?'等待主持人进行轮末结算。':'摇号后按座位顺序依次行动。';
- const legal=state.players.filter(p=>p.alive&&p.seat!==me.seat&&!p.safe);
+ $('turnHint').textContent=current?'当前行动：'+playerLabel(current)+(turn?.extraId?'（狼王额外捕食，可无视保护区）':'')+(own?'，请选择捕食目标，或点击跳过本次捕食。':'，请等待。'):turn?.ready?'等待主持人进行轮末结算。':'摇号后按座位顺序依次行动。';
+ const legal=state.players.filter(p=>p.alive&&p.seat!==me.seat&&(!p.safe||!!state.turn?.extraId));
  $('turnForm').hidden=!own||!!pending||!me.alive||state.done;
  setOptions($('turnTarget'),legal,'选择捕食目标');
  $('startHunt').disabled=strategySubmitting||!legal.length;
@@ -218,7 +218,7 @@ async function takeTurn(action){
 }
 $('turnForm').onsubmit=event=>{event.preventDefault();takeTurn('hunt');};
 $('passTurn').onclick=()=>{
- const legal=me.state.players.some(p=>p.alive&&p.seat!==me.seat&&!p.safe);
+ const legal=me.state.players.some(p=>p.alive&&p.seat!==me.seat&&(!p.safe||!!me.state.turn?.extraId));
  takeTurn(legal?'defer':'pass');
 };
 $('strategyForm').onsubmit=async event=>{

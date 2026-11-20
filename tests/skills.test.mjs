@@ -35,7 +35,7 @@ test('契约须自愿同意，托管3 HP；守约返还，背叛时守约者得�
   assert.deepEqual(room.players.slice(0,2).map(p=>p.hp),betray?[17,23]:[20,20]);
  }
 });
-test('狼王分配两次额外行动，普通顺序后使用，每次仍双盲，保护区限制有效',()=>{
+test('狼王分配两次额外行动，普通顺序后使用，每次仍双盲，额外机会无视保护区',()=>{
  const room=setup(3),card=buy(room);command(room,{action:'draw'});
  skill(room,1,{cardId:card.id,target:1,target2:2});assert.equal(room.extraTurns.length,2);
  room.events=room.players.map(p=>({round:3,aSeat:p.seat}));
@@ -45,7 +45,10 @@ test('狼王分配两次额外行动，普通顺序后使用，每次仍双盲�
  submitStrategy(room,room.players[0].secret,id,0);assert.equal(room.players[2].safe,false);
  submitStrategy(room,room.players[2].secret,id,1);assert.equal(room.players[2].safe,true);
  assert.equal(room.extraTurns[0].used,true);assert.equal(turnView(room).current,2);
- room.players.forEach(p=>p.safe=true);assert.equal(turnView(room).current,null);
+ room.players.forEach(p=>p.safe=true);assert.equal(turnView(room).current,2);
+ playerAction(room,room.players[1].secret,{action:'hunt',target:3,round:3,operation:token()});
+ const next=room.pendingHunt.id;submitStrategy(room,room.players[1].secret,next,0);submitStrategy(room,room.players[2].secret,next,1);
+ assert.equal(room.extraTurns[1].used,true);assert.equal(turnView(room).current,null);
 });
 test('断尾支付3 HP，刷新对局标识及双盲提交，禁止再次重定向',()=>{
  const room=setup(4),card=buy(room,2);
@@ -71,4 +74,14 @@ test('暂时跳过不扣生命且保留行动，其他玩家行动后轮回，�
  play(2);assert.equal(turnView(room).current,3);
  play(3);assert.equal(turnView(room).current,1);
  assert.equal(room.passes?.length??0,0);assert.ok(room.players.every(p=>p.hp===20));
+});
+test('生死契约仅在拍卖结束后的谈判阶段邀请和接受',()=>{
+ const room=setup(2);command(room,{action:'auction',item:0,seat:1,price:1,capacity:true});
+ const card=personalSkills(room,1).cards[0];
+ assert.throws(()=>skill(room,1,{cardId:card.id,target:2}),/谈判阶段/);
+ command(room,{action:'auction',item:1,unsold:true});command(room,{action:'timer'});
+ skill(room,1,{cardId:card.id,target:2});const invite=personalSkills(room,2).invites[0];
+ command(room,{action:'draw'});
+ assert.throws(()=>skill(room,2,{contractId:invite.id,accept:true}),/谈判阶段/);
+ assert.ok(room.players.every(p=>p.hp===20));
 });
