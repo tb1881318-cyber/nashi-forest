@@ -76,16 +76,12 @@ test('暂时跳过不扣生命且保留行动，其他玩家行动后轮回，�
  play(3);assert.equal(turnView(room).current,1);
  assert.equal(room.passes?.length??0,0);assert.ok(room.players.every(p=>p.hp===20));
 });
-test('生死契约仅在拍卖结束后的谈判阶段邀请和接受',()=>{
+test('拿到生死契约即可邀请，补给未拍卖及捕食开始后均可接受',()=>{
  const room=setup(2);command(room,{action:'auction',item:0,seat:1,price:1,capacity:true});
- const card=personalSkills(room,1).cards[0];
- assert.throws(()=>skill(room,1,{cardId:card.id,target:2}),/拍卖结束/);
- command(room,{action:'auction',item:1,unsold:true});command(room,{action:'timer'});
- skill(room,1,{cardId:card.id,target:2});const invite=personalSkills(room,2).invites[0];
- command(room,{action:'draw'});
- const actor=turnView(room).current;command(room,{action:'hunt',a:actor,b:actor===1?3:1});
- assert.throws(()=>skill(room,2,{contractId:invite.id,accept:true}),/拍卖结束/);
- assert.ok(room.players.every(p=>p.hp===20));
+ const card=personalSkills(room,1).cards[0];skill(room,1,{cardId:card.id,target:2});
+ const invite=personalSkills(room,2).invites[0];
+ command(room,{action:'hunt',a:1,b:3});
+ skill(room,2,{contractId:invite.id,accept:true});assert.deepEqual(room.players.slice(0,2).map(p=>p.hp),[17,17]);
 });
 test('随机先手池内不重复，同轮不重抽，存活玩家抽尽后重置',()=>{
  const room=setup(1);const seen=new Set();

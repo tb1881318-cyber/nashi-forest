@@ -77,10 +77,10 @@ function renderSkills(){
   label.append(select);form.append(label);
   let second=null;
   if(card.type===3){second=document.createElement('select');second.required=true;const secondLabel=document.createElement('label');secondLabel.textContent='第二次额外机会交给谁';second.setAttribute('aria-label',secondLabel.textContent);second.add(new Option('请选择玩家',''));for(const p of targets)second.add(new Option(playerLabel(p),p.seat));secondLabel.append(second);form.append(secondLabel);}
-  const button=document.createElement('button');button.className='primary top-gap';button.textContent=card.type===2?'谈判阶段：邀请建立契约':card.type===3?'分配两次额外机会':card.type===4?'支付3 HP并转移捕食':card.type===5?'指定首位行动玩家':'秘密查看身份';
+  const button=document.createElement('button');button.className='primary top-gap';button.textContent=card.type===2?'邀请建立契约':card.type===3?'分配两次额外机会':card.type===4?'支付3 HP并转移捕食':card.type===5?'指定首位行动玩家':'秘密查看身份';
   if(card.type===4)button.disabled=me.state.pendingHunt?.bSeat!==me.seat||me.state.pendingHunt?.redirected;
-  if(card.type===2)button.disabled=me.state.contractAvailable===false||!me.state.sales.every(Boolean);
-  if(card.type===2){const hint=document.createElement('p');hint.className='notice';hint.textContent=button.disabled?'拍卖完成后、首场捕食开始前可建立契约。':'现在可以建立契约：选择另一名玩家，点击邀请，对方同意后生效。';form.append(hint);}
+  if(card.type===2)button.disabled=!!me.state.done;
+  if(card.type===2){const hint=document.createElement('p');hint.className='notice';hint.textContent=button.disabled?'对局已结束。':'持有技能即可邀请，不限阶段；对方同意、双方各托管3 HP后生效，当轮有效。';form.append(hint);}
   if(card.type===3)button.disabled=!me.state.order.length;
   form.append(button);form.onsubmit=e=>{e.preventDefault();skillCommand({cardId:card.id,target:Number(select.value),target2:second?Number(second.value):undefined});};
   const discard=document.createElement('button');discard.type='button';discard.textContent='放弃此卡';discard.onclick=()=>{if(confirm('确认放弃'+info.name+'？'))skillCommand({cardId:card.id,discard:true});};
