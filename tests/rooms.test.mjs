@@ -324,3 +324,25 @@ test('玩家转让 HP：身份验证、金额校验、双方历史同步、重�
  assert.equal(state.lastSettlement.kind,'transfer');assert.ok(!JSON.stringify(state.transfers).includes('identity'));
  const final=await transfer({target:2,amount:4});assert.equal(final.data.hp,0);assert.equal(final.data.alive,true);
 });
+test('双人技能测试自动补模拟玩家，契约双方可接受，模拟玩家双盲自动应战',async()=>{
+ for(const testRound of [2,3]){
+  const db=database();const {data:created}=await call(db,'/rooms',{testRound});const path='/rooms/'+created.room;
+  const keys=[token(),token()];for(let i=0;i<2;i++)await call(db,path+'/join',{id:'测试'+i,secret:keys[i]});
+  let state=(await call(db,path)).data;assert.equal(state.players.length,3);assert.equal(state.players[2].bot,true);assert.equal(state.round,testRound);
+  const cmd=async body=>(await call(db,path+'/action',{...body,operation:token()},created.hostToken)).data;
+  await cmd({action:'auction',item:0,seat:1,price:0,capacity:true});await cmd({action:'auction',item:1,unsold:true});
+  let me=(await call(db,path+'/me',undefined,keys[0])).data;const card=me.skills.cards[0];
+  if(testRound===2){
+   await call(db,path+'/skill',{cardId:card.id,target:2,operation:token()},keys[0]);
+   const other=(await call(db,path+'/me',undefined,keys[1])).data;
+   const accepted=await call(db,path+'/skill',{contractId:other.skills.invites[0].id,accept:true,operation:token()},keys[1]);
+   assert.equal(accepted.status,200);assert.equal(accepted.data.hp,27);
+  }
+  state=await cmd({action:'draw'});let current=state.turn.current;assert.notEqual(current,3);
+  const started=await call(db,path+'/play',{action:'hunt',target:3,round:testRound,operation:token()},keys[current-1]);
+  assert.equal(started.status,200);assert.equal(started.data.state.pendingHunt.submittedB,true);
+  const enc=started.data.state.pendingHunt.id;
+  const done=await call(db,path+'/strategy',{encounterId:enc,choice:0},keys[current-1]);
+  assert.equal(done.status,200);assert.equal(done.data.state.pendingHunt,null);assert.equal(done.data.state.events.length,1);
+ }
+});

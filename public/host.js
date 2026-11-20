@@ -1,3 +1,4 @@
+let requestedTestRound=0;
 let roomId=null,hostToken=null,state=null,busy=false,firstLoad=true,identitiesVisible=false,lastRendered=null;
 try{
  const saved=JSON.parse(localStorage.getItem('nash-host-online'));
@@ -22,8 +23,8 @@ function render(){
  $('boardLink').onclick=event=>{if(!ready)event.preventDefault();};
  $('startHint').textContent=ready?'人数已齐，点击上方“开始对局”进入拍卖；两件物品记录成交或流拍后，即可谈判和摇号。':'等待 '+(state.count-state.players.length)+' 名玩家入场。';
  $('playerLink').value=link('player.html',roomId);
- $('roomNumber').textContent='对局号 '+roomId;
- $('joined').textContent=state.players.length+' / '+state.count+' 人入场';
+ $('roomNumber').textContent=(state.testMode?'测试局号 ':'对局号 ')+roomId;
+ $('joined').textContent=state.testMode?state.players.filter(p=>!p.bot).length+' / 2 真人入场＋1 模拟玩家':state.players.length+' / '+state.count+' 人入场';
  $('seats').replaceChildren();
  for(let seat=1;seat<=state.count;seat++){
   const p=state.players.find(p=>p.seat===seat),card=document.createElement('article');
@@ -47,12 +48,13 @@ async function pull(){
 $('setup').onsubmit=async e=>{
  e.preventDefault();if(busy)return;
  const requestedCount=Number($('count').value);
+ const testRound=requestedTestRound;requestedTestRound=0;
  busy=true;
  $('create').disabled=true;
  $('create').textContent='正在创建新局…';
  $('status').textContent='正在分配新的对局号…';
  try{
-  const result=await request('/rooms',{count:requestedCount});
+  const result=await request('/rooms',{count:requestedCount,...(testRound?{testRound}:{})});
   roomId=result.room;hostToken=result.hostToken;state=result.state;
   lastRendered=null;firstLoad=false;
   const activeUrl=new URL(location.href);
@@ -85,3 +87,5 @@ $('copyCode').onclick=async()=>{
  catch{$('status').textContent='对局号 '+roomId;}
 };
 startPolling(pull,2000);
+
+for(const [id,round] of [['testContract',2],['testWolf',3]])$(id).onclick=()=>{if(busy)return;requestedTestRound=round;$('setup').onsubmit({preventDefault(){}});};

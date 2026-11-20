@@ -149,7 +149,7 @@ export function useSkill(room,secret,body,now=Date.now()){
     if(!target||target===player)fail('请选择其他存活玩家');
     card.intel={seat:target.seat,id:target.id,identity:target.identity};card.used=true;
    }else if(card.type===2){
-    if(!room.sales.every(Boolean)||room.order.length||!target||target===player)fail('请在拍卖结束后的谈判阶段选择其他存活玩家');
+    if(!room.sales.every(Boolean)||room.order.length||!target||target===player||target.bot)fail('请在拍卖结束后的谈判阶段选择其他存活玩家');
     room.contracts.push({id:token(),round:room.round,from:player.seat,to:target.seat,status:'invited'});card.used=true;
    }else if(card.type===3){
     if(!room.order.length)fail('请先等待摇号');
@@ -234,7 +234,7 @@ export function transferHp(room,secret,body,now=Date.now()){
 export function publicRoom(room) {
  initializeSkills(room);
  return {transfers:room.transfers??[],skillLog:room.skillLog,contracts:room.contracts,phase:!room.sales.every(Boolean)?'拍卖':room.order.length?'行动':'谈判与摇号',count:room.count,players:room.players.map(({secret,identity,...p})=>p),
- turn:turnView(room),passes:room.passes??[],pendingHunt:pendingHuntView(room),round:room.round,done:room.done,events:room.events,order:room.order,drawn:room.drawn,
+ testMode:!!room.testMode,turn:turnView(room),passes:room.passes??[],pendingHunt:pendingHuntView(room),round:room.round,done:room.done,events:room.events,order:room.order,drawn:room.drawn,
  serverTime:Date.now(),lastSettlement:room.lastSettlement??null,sales:room.sales,deadline:room.deadline,left:room.left,config:room.config,result:room.result??''};
 }
 export function action(room,body,now=Date.now()) {
@@ -333,4 +333,20 @@ export function action(room,body,now=Date.now()) {
  else syncHpRound(room);
  room.processed.push(body.operation);
  room.processed=room.processed.slice(-100);
+}
+
+export function runTestBot(room){
+ if(!room.testMode||room.done)return;
+ const bot=room.players.find(p=>p.bot&&p.alive);if(!bot)return;
+ for(let i=0;i<4;i++){
+  const h=room.pendingHunt;
+  if(h&&[h.aSeat,h.bSeat].includes(bot.seat)){
+   const role=h.aSeat===bot.seat?'a':'b';
+   if(h.choices[role]!==null)return;
+   submitStrategy(room,bot.secret,h.id,randomInt(2));
+   if(room.pendingHunt)return;
+  }else if(!h&&turnView(room).current===bot.seat){
+   room.passes??=[];room.passes.push({round:room.round,seat:bot.seat,id:bot.id,at:Date.now(),cost:0});
+  }else return;
+ }
 }

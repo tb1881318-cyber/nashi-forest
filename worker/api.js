@@ -1,4 +1,4 @@
-import {createRoom,publicRoom,action,token,randomInt,fail,syncHpRound,personalHpHistory,personalDuel,submitStrategy,playerAction,personalSkills,useSkill,transferHp} from './game.js';
+import {createRoom,publicRoom,action,token,randomInt,fail,syncHpRound,personalHpHistory,personalDuel,submitStrategy,playerAction,personalSkills,useSkill,transferHp,runTestBot} from './game.js';
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 async function readBody(request){
  const text=await request.text();
@@ -11,6 +11,10 @@ async function mutate(db,id,transform){
   if(!row)fail('对局不存在，请检查主持人发来的链接',404);
   const room=JSON.parse(row.data);
   const response=transform(room);
+  runTestBot(room);
+  if(response?.skills&&response.seat){Object.assign(response,playerView(room,room.players.find(p=>p.seat===response.seat)));}
+  else if(response?.state)response.state=publicRoom(room);
+  else if(response?.players&&response.count)Object.assign(response,publicRoom(room));
   const result=await db.prepare('UPDATE rooms SET data=?,version=version+1 WHERE id=? AND version=?').bind(JSON.stringify(room),id,row.version).run();
   if(result.meta.changes===1)return response;
  }
@@ -28,7 +32,9 @@ export async function api(request,env){
   const url=new URL(request.url);
   if(request.method==='POST'&&url.pathname==='/api/rooms'){
    const body=await readBody(request);
-   const room=createRoom(body.count);
+   if(body.testRound!==undefined&&![2,3].includes(body.testRound))fail('请选择契约或狼王测试');
+   const room=createRoom(body.testRound?3:body.count);
+   if(body.testRound){room.testMode=true;room.round=body.testRound;}
    for(let attempt=0;attempt<40;attempt++){
     const id=String(1000+randomInt(9000));
     const result=await env.DB.prepare('INSERT OR IGNORE INTO rooms (id,data,version) VALUES (?,?,0)').bind(id,JSON.stringify(room)).run();
@@ -71,6 +77,7 @@ export async function api(request,env){
     const identity=room.deck.pop();
     const p={id:playerId,seat:room.players.length+1,secret,identity,hp:room.initialHp??20,coins:room.config.initial+room.config.stipend,alive:true,safe:false};
     room.players.push(p);
+    if(room.testMode&&room.players.length===2)room.players.push({id:'模拟玩家',seat:3,secret:token(),identity:room.deck.pop(),hp:30,coins:15,alive:true,safe:false,bot:true});
     syncHpRound(room);
     return {id:p.id,seat:p.seat};
    }));

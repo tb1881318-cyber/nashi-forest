@@ -68,7 +68,7 @@ function renderSkills(){
   const details=document.createElement('details'),summary=document.createElement('summary'),rule=document.createElement('p');
   summary.textContent='技能规则';rule.textContent=info.effect+' '+info.timing+'；'+info.limit;details.append(summary,rule);
   const form=document.createElement('form');
-  const targets=me.state.players.filter(p=>p.alive&&(card.type===1||card.type===2||card.type===4?p.seat!==me.seat:true));
+  const targets=me.state.players.filter(p=>p.alive&&(card.type!==2||!p.bot)&&(card.type===1||card.type===2||card.type===4?p.seat!==me.seat:true));
   const select=document.createElement('select');select.required=true;
   const label=document.createElement('label');label.textContent=card.type===1?'选择要查看的玩家':card.type===2?'邀请哪位玩家':card.type===3?'第一次额外机会交给谁':card.type===4?'将捕食转移给谁':'指定哪位玩家先行动';
   select.setAttribute('aria-label',label.textContent);
