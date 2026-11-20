@@ -102,3 +102,12 @@ test('无对局参数重新打开玩家台会恢复保存的身份，计算器�
  assert.equal(saved.get('nash-player-last-room'),'2698');
  $('switchRoom').onclick();assert.equal($('join').hidden,false);assert.equal($('hand').hidden,true);
 });
+
+test('三人到齐时主持人显示开始对局入口并直达本轮拍卖',async()=>{
+ const state={count:3,round:1,players:[1,2,3].map(seat=>({id:'P'+seat,seat})),sales:[null,null],order:[]};
+ const {$}=fixture('host',{request:async()=>({room:'3456',hostToken:'host',state})});
+ await $('setup').onsubmit({preventDefault(){}});
+ assert.equal($('boardLink').textContent,'开始对局 · 进入拍卖');
+ assert.equal($('boardLink').href,'board.html?room=3456#roundAuction');
+ assert.match($('startHint').textContent,/人数已齐/);
+});

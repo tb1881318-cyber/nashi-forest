@@ -15,7 +15,12 @@ function render(){
  if(snapshot===lastRendered)return;
  lastRendered=snapshot;
  $('game').hidden=false;$('roomLinks').hidden=false;$('boardLink').hidden=false;
- $('boardLink').href=link('board.html',roomId);
+ const ready=state.players.length===state.count;
+ $('boardLink').href=link('board.html',roomId)+(state.sales?.every(Boolean)?'':'#roundAuction');
+ $('boardLink').textContent=state.done?'查看本局结果':!ready?'等待玩家入场（'+state.players.length+'/'+state.count+'）':state.round===1&&!state.order?.length?'开始对局 · 进入拍卖':'继续对局 · 打开公共台';
+ $('boardLink').setAttribute('aria-disabled',String(!ready));
+ $('boardLink').onclick=event=>{if(!ready)event.preventDefault();};
+ $('startHint').textContent=ready?'人数已齐，点击上方“开始对局”进入拍卖；两件物品记录成交或流拍后，即可谈判和摇号。':'等待 '+(state.count-state.players.length)+' 名玩家入场。';
  $('playerLink').value=link('player.html',roomId);
  $('roomNumber').textContent='对局号 '+roomId;
  $('joined').textContent=state.players.length+' / '+state.count+' 人入场';

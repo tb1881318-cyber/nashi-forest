@@ -15,6 +15,10 @@ function adjustFields(){const p=state.players.find(p=>String(p.seat)===$('adjust
 let auctionRound=null;
 function renderAuction(){
  const info=rounds[state.round-1];
+ if(hostToken){
+  const panel=$('auction').closest('section');
+  if(panel.parentElement!==$('roundAuction')){$('roundAuction').append(panel);panel.classList.add('auction-entry');}
+ }
  $('auctionHeading').textContent='第 '+state.round+' 轮 · '+(state.sales.every(Boolean)?'拍卖已结束':'先完成拍卖');
  if(auctionRound!==state.round){
   auctionRound=state.round;
@@ -30,7 +34,7 @@ function renderAuction(){
  const sales=state.sales.map((s,i)=>(i?'生命补给':info.name)+'：'+(!s?'待拍卖':s.unsold?'流拍':s.id+' · '+s.price+' 金币')).join(' ｜ ');
  let line=$('auctionSaleLine');
  if(!line){line=document.createElement('p');line.id='auctionSaleLine';$('auctionPreview').append(line);}
- line.textContent=sales;
+ line.textContent=sales+(state.sales.every(Boolean)?'。下一步：开始谈判，再摇号。':'。主持人请在这里依次记录技能、补给成交；无人出价则点击流拍。');
  $('item').options[0].textContent=info.name;
 }
 function render(){
